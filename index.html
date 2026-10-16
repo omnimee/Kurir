@@ -1,21 +1,1372 @@
 <!DOCTYPE html>
-<html>
+<html lang="id">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0C6B4F">
+<title>Antar Jemput</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<style>
+/* Tata letak: panel formulir di kiri, peta penuh di kanan. Di ponsel peta di atas, panel di bawah. */
+:root {
+  --bg: #EDF0EB; --surface: #FFFFFF; --ink: #12231B; --muted: #566860; --line: #D2DAD0;
+  --soft: #E2EAE3; --brand: #0C6B4F; --brand-ink: #FFFFFF; --signal: #F5A400; --danger: #B3361F;
+  --shadow: 0 1px 2px rgba(18,35,27,.08), 0 10px 28px rgba(18,35,27,.07);
+  --f-display: 'Bricolage Grotesque', system-ui, sans-serif;
+  --f-body: 'IBM Plex Sans', system-ui, sans-serif;
+  --f-mono: 'IBM Plex Mono', ui-monospace, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #0E1612; --surface: #16211B; --ink: #E7EFE9; --muted: #94A69B; --line: #29372F; --soft: #1F2D25;
+    --brand: #3CC393; --brand-ink: #062518; --signal: #FFB81F; --danger: #FF8A70; --shadow: 0 1px 2px rgba(0,0,0,.4); color-scheme: dark; }
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 var(--f-body); display: flex; flex-direction: column; }
+h1, h2, h3 { font-family: var(--f-display); margin: 0; line-height: 1.15; text-wrap: balance; }
+h1 { font-size: 1.7rem; font-weight: 700; letter-spacing: -.01em; }
+h2 { font-size: 1.15rem; font-weight: 650; }
+button, input, textarea { font: inherit; color: inherit; }
+a { color: var(--brand); }
+:focus-visible { outline: 3px solid color-mix(in srgb, var(--brand) 55%, transparent); outline-offset: 2px; }
 
-    <title>Aplikasi Kurir Antar Barang</title>
+.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 16px; background: var(--surface); border-bottom: 1px solid var(--line); }
+.brand { display: flex; align-items: center; gap: 8px; font-family: var(--f-display); font-weight: 700; font-size: 1.1rem; color: var(--ink); text-decoration: none; }
+.brand svg { color: var(--brand); }
+.brand { touch-action: manipulation; -webkit-user-select: none; user-select: none; }
+.top-link { font-size: .85rem; color: var(--muted); }
+.brand-logo { height: 36px; width: auto; max-width: min(180px, 45vw); object-fit: contain; display: block; }
+.logo-row { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+.logo-box { width: 200px; height: 80px; border: 1.5px dashed var(--line); border-radius: 12px; display: grid; place-items: center; background: var(--soft); padding: 8px; }
+.logo-box img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.logo-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.sizes.pay { grid-template-columns: repeat(2, 1fr); }
+@media (max-width: 820px) { .sizes.pay { grid-template-columns: 1fr; } }
+.swatches { display: flex; flex-wrap: wrap; gap: 12px; }
+.sw { width: 44px; height: 44px; border-radius: 50%; border: 3px solid var(--surface); box-shadow: 0 0 0 1.5px var(--line); cursor: pointer; padding: 0; }
+.sw.on { box-shadow: 0 0 0 3px var(--ink); }
+.color-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.colorin { width: 64px; height: 44px; padding: 2px; border-radius: 10px; border: 1.5px solid var(--line); background: var(--surface); cursor: pointer; }
+.chk { display: flex; gap: 10px; align-items: center; cursor: pointer; }
+.chk input { width: 20px; height: 20px; accent-color: var(--brand); }
 
-    <meta http-equiv="refresh"
-          content="0;url=https://script.google.com/macros/s/AKfycbzxT3W5DbPt02zjtsNzZ0FDuWTh6APRRI1mvDvVIzg6pTPsIDZLw5-cWV5BDETdm2elcw/exec">
+.shell { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(360px, 460px) 1fr; }
+.panel { overflow-y: auto; padding: 20px 16px 32px; display: flex; flex-direction: column; gap: 18px; background: var(--bg); }
+.mapwrap { position: relative; min-height: 0; }
+#map, #kmap { position: absolute; inset: 0; background: var(--soft); }
+.sub { color: var(--muted); margin: 6px 0 0; }
 
-    <script>
-        window.location.href =
-            "https://script.google.com/macros/s/AKfycbzxT3W5DbPt02zjtsNzZ0FDuWTh6APRRI1mvDvVIzg6pTPsIDZLw5-cWV5BDETdm2elcw/exec";
-    </script>
+/* form */
+.field { display: flex; flex-direction: column; gap: 6px; position: relative; }
+.lbl { font-size: .78rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.in { width: 100%; padding: 11px 12px; border: 1.5px solid var(--line); border-radius: 10px; background: var(--surface); min-width: 0; }
+.in:focus { border-color: var(--brand); outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 22%, transparent); }
+textarea.in { resize: vertical; min-height: 44px; }
+.addr { display: flex; align-items: center; gap: 8px; }
+.dot { flex: none; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font: 600 .78rem var(--f-mono); background: var(--brand); color: var(--brand-ink); }
+.dot.b { background: var(--ink); color: var(--bg); }
+.addr-actions { display: flex; gap: 8px; flex-wrap: wrap; padding-left: 34px; }
+.chip { border: 1.5px solid var(--line); background: var(--surface); border-radius: 999px; padding: 4px 12px; font-size: .85rem; cursor: pointer; }
+.chip:hover { border-color: var(--brand); }
+.chip.on { background: var(--brand); color: var(--brand-ink); border-color: var(--brand); }
+.sugg { list-style: none; margin: 0; padding: 4px; position: absolute; top: 66px; left: 34px; right: 0; z-index: 800; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow); max-height: 240px; overflow: auto; }
+.sugg button { width: 100%; text-align: left; border: 0; background: none; padding: 8px 10px; border-radius: 8px; cursor: pointer; font-size: .9rem; }
+.sugg button:hover, .sugg button:focus { background: var(--soft); }
+.sugg .none { padding: 8px 10px; color: var(--muted); font-size: .9rem; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.sizes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.opt { position: relative; display: flex; flex-direction: column; gap: 2px; padding: 10px; border: 1.5px solid var(--line); border-radius: 10px; background: var(--surface); cursor: pointer; min-width: 0; }
+.opt input { position: absolute; opacity: 0; inset: 0; cursor: pointer; }
+.opt:has(input:checked) { border-color: var(--brand); box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 20%, transparent); }
+.opt:has(input:focus-visible) { outline: 3px solid color-mix(in srgb, var(--brand) 55%, transparent); }
+.opt-t { font-weight: 650; }
+.opt-s { font-size: .76rem; color: var(--muted); line-height: 1.3; }
+.opt-p { font: 500 .78rem var(--f-mono); margin-top: 4px; }
+
+.pricecard { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 10px; }
+.pricecard.muted { color: var(--muted); box-shadow: none; background: transparent; border-style: dashed; }
+.pricecard.err { color: var(--danger); border-color: var(--danger); }
+.rows { display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; margin: 0; }
+.rows dt { color: var(--muted); }
+.rows dd { margin: 0; text-align: right; font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+.total { display: flex; justify-content: space-between; align-items: baseline; border-top: 1px dashed var(--line); padding-top: 10px; }
+.total strong { font: 700 1.7rem var(--f-display); font-variant-numeric: tabular-nums; }
+.note { font-size: .82rem; color: var(--muted); margin: 0; }
+.route-meta { display: flex; gap: 14px; flex-wrap: wrap; font-family: var(--f-mono); font-size: .9rem; }
+.skel { height: 14px; border-radius: 6px; background: linear-gradient(90deg, var(--soft), var(--line), var(--soft)); background-size: 200% 100%; animation: sk 1.2s linear infinite; }
+@keyframes sk { to { background-position: -200% 0; } }
+
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 18px; border-radius: 12px; border: 1.5px solid var(--line); background: var(--surface); font-weight: 600; cursor: pointer; text-decoration: none; color: var(--ink); }
+.btn:hover { border-color: var(--brand); }
+.btn.primary { background: var(--brand); border-color: var(--brand); color: var(--brand-ink); }
+.btn.primary:hover { filter: brightness(1.08); }
+.btn.danger { color: var(--danger); }
+.btn:disabled { opacity: .45; cursor: not-allowed; filter: none; }
+.btn.block { width: 100%; }
+.err-msg { color: var(--danger); font-size: .9rem; margin: 0; min-height: 1.2em; }
+
+/* pelacakan */
+.status-head { display: flex; flex-direction: column; gap: 8px; }
+.pill { align-self: flex-start; font: 600 .75rem var(--f-mono); letter-spacing: .04em; text-transform: uppercase; padding: 3px 10px; border-radius: 999px; background: var(--soft); color: var(--ink); }
+.pill.st-menunggu, .pill.st-menunggu_bayar { background: color-mix(in srgb, var(--signal) 30%, var(--surface)); }
+.pill.st-dilaporkan { background: var(--brand); color: var(--brand-ink); }
+.pill.st-selesai { background: var(--brand); color: var(--brand-ink); }
+.pill.st-batal { background: color-mix(in srgb, var(--danger) 18%, var(--surface)); color: var(--danger); }
+.code { font-family: var(--f-mono); letter-spacing: .04em; white-space: nowrap; }
+.eta { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; display: flex; flex-direction: column; gap: 2px; }
+.eta strong { font: 700 1.5rem var(--f-display); }
+.eta small { color: var(--muted); }
+.live { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--brand); margin-right: 6px; box-shadow: 0 0 0 0 var(--brand); animation: pulse 1.8s infinite; }
+.live.off { background: var(--muted); animation: none; }
+@keyframes pulse { 70% { box-shadow: 0 0 0 8px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
+.timeline { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0; }
+.timeline li { position: relative; padding: 0 0 16px 30px; color: var(--muted); }
+.timeline li::before { content: ''; position: absolute; left: 6px; top: 6px; width: 12px; height: 12px; border-radius: 50%; background: var(--surface); border: 2px solid var(--line); z-index: 1; }
+.timeline li::after { content: ''; position: absolute; left: 11px; top: 18px; bottom: -6px; width: 2px; background: var(--line); }
+.timeline li:last-child::after { display: none; }
+.timeline li.done { color: var(--ink); }
+.timeline li.done::before { background: var(--brand); border-color: var(--brand); }
+.timeline li.done::after { background: var(--brand); }
+.timeline li.now { font-weight: 650; }
+.timeline li.now::before { box-shadow: 0 0 0 5px color-mix(in srgb, var(--brand) 25%, transparent); }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+.actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.actions .btn { flex: 1 1 140px; }
+
+/* penanda peta */
+.aj-pin { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font: 600 .8rem var(--f-mono); color: #fff; background: var(--brand); border: 3px solid #fff; box-shadow: 0 2px 8px rgba(0,0,0,.35); }
+.aj-pin.dropoff { background: #12231B; }
+.aj-kurir { width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; background: #F5A400; color: #12231B; border: 3px solid #fff; box-shadow: 0 2px 10px rgba(0,0,0,.4); position: relative; }
+.aj-kurir::after { content: ''; position: absolute; inset: -3px; border-radius: 50%; border: 2px solid #F5A400; animation: ring 1.8s ease-out infinite; }
+@keyframes ring { from { transform: scale(1); opacity: .9; } to { transform: scale(1.9); opacity: 0; } }
+.leaflet-marker-icon.smooth { transition: transform 1.2s linear; }
+.leaflet-container.picking { cursor: crosshair; }
+.toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 12px; z-index: 2000; box-shadow: var(--shadow); max-width: calc(100% - 32px); }
+
+/* halaman kurir */
+.kshell { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(300px, 380px) minmax(0, 1fr); }
+.klist { overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 10px; border-right: 1px solid var(--line); }
+.kmain { overflow-y: auto; display: flex; flex-direction: column; min-height: 0; }
+.kmap { position: relative; height: 320px; flex: none; }
+.kdetail { padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+.order { text-align: left; background: var(--surface); border: 1.5px solid var(--line); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 6px; cursor: pointer; }
+.order:hover { border-color: var(--brand); }
+.order.sel { border-color: var(--brand); box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 20%, transparent); }
+.order .l1 { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.order .l2 { font-size: .85rem; color: var(--muted); overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.order .l3 { font: 500 .85rem var(--f-mono); }
+.gate { margin: auto; width: min(380px, calc(100% - 32px)); display: flex; flex-direction: column; gap: 14px; padding-block: 40px; }
+.stops { display: grid; gap: 10px; }
+.stop { display: grid; grid-template-columns: 26px 1fr; gap: 10px; align-items: start; }
+.sec-title { font-size: .78rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+
+
+/* ---- elemen yang dipakai semua ukuran layar ---- */
+:root { --topH: 56px; --navh: 0px; --sbpad: calc(10px + env(safe-area-inset-bottom, 0px)); }
+.top { min-height: var(--topH); }
+.top-link, .navbtn { padding: 12px 4px; }
+.submitbar { display: flex; flex-direction: column; gap: 10px; }
+.stickybar { display: flex; gap: 10px; flex-wrap: wrap; }
+.stickybar .btn { flex: 1 1 140px; }
+.kback { display: none; }
+
+button, a, .opt, .chip { -webkit-tap-highlight-color: transparent; }
+
+/* ---- ponsel dan tablet kecil ---- */
+@media (max-width: 820px) {
+  html, body { height: auto; min-height: 100%; }
+  body { font-size: 16px; }
+  .top { position: sticky; top: 0; z-index: 900; padding-top: calc(8px + env(safe-area-inset-top, 0px)); }
+  .shell, .kshell { display: flex; flex-direction: column; }
+
+  /* peta di atas, panel naik menutupi tepi bawah peta seperti lembar bawah */
+  .mapwrap { order: -1; flex: none; position: relative; z-index: 1; isolation: isolate; height: 34dvh; min-height: 230px; }
+  body.tracking .mapwrap { position: sticky; top: calc(var(--topH) + env(safe-area-inset-top, 0px)); z-index: 5; height: 38dvh; }
+  .panel { overflow: visible; position: relative; z-index: 6; margin-top: -16px; padding: 22px 16px calc(24px + env(safe-area-inset-bottom, 0px)); border-radius: 20px 20px 0 0; background: var(--bg); box-shadow: 0 -10px 28px rgba(0,0,0,.10); }
+  .panel::before { content: ''; align-self: center; width: 40px; height: 4px; border-radius: 4px; background: var(--line); margin-top: -10px; }
+
+  /* sentuhan jari: target minimal 44 sampai 48 px, huruf 16 px agar iOS tidak memperbesar halaman */
+  .in { min-height: 48px; font-size: 16px; padding: 12px; }
+  textarea.in { min-height: 72px; }
+  .chip { min-height: 42px; padding: 8px 16px; font-size: .95rem; }
+  .btn { min-height: 50px; font-size: 1rem; }
+  .actions .btn { flex: 1 1 100%; }
+  .sugg { position: static; margin: 4px 0 0 34px; max-height: 260px; }
+  .sugg button { min-height: 46px; padding: 10px 12px; }
+  .two { grid-template-columns: 1fr; }
+
+  /* ukuran barang jadi daftar */
+  .sizes { grid-template-columns: 1fr; }
+  .opt { display: grid; grid-template-columns: 1fr auto; column-gap: 12px; align-items: center; padding: 12px 14px; min-height: 64px; }
+  .opt-t, .opt-s { grid-column: 1; }
+  .opt-p { grid-column: 2; grid-row: 1 / span 2; margin: 0; text-align: right; }
+
+  /* tombol pesan menempel di bawah layar */
+  .submitbar { position: sticky; bottom: 0; z-index: 8; margin: 0 -16px; padding: 14px 16px calc(12px + env(safe-area-inset-bottom, 0px)); background: linear-gradient(to top, var(--bg) 82%, transparent); }
+  .submitbar .err-msg { min-height: 0; }
+  .toast { bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
+
+  /* pelacakan */
+  .eta { padding: 16px; }
+  .eta strong { font-size: 1.4rem; }
+
+  /* kurir: daftar lalu detail layar penuh */
+  .klist { border-right: 0; overflow: visible; padding-bottom: calc(24px + var(--navh)); }
+  .kmain { overflow: visible; }
+  .kshell:not(.show-detail) .kmain { display: none; }
+  .kshell.show-detail .klist { display: none; }
+  .kback { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 12px; background: var(--surface); border-bottom: 1px solid var(--line); position: sticky; top: calc(var(--topH) + env(safe-area-inset-top, 0px)); z-index: 7; }
+  .kback button { border: 0; background: none; font-weight: 600; color: var(--brand); min-height: 44px; padding: 0 8px; cursor: pointer; font-size: 1rem; }
+  .kmap { height: 34dvh; min-height: 220px; }
+  .kdetail { padding-bottom: calc(24px + var(--navh)); }
+  .stickybar { position: sticky; bottom: var(--navh); z-index: 8; margin: 0 -16px; padding: 12px 16px var(--sbpad); background: linear-gradient(to top, var(--bg) 82%, transparent); }
+  .order { padding: 14px; }
+  .gate { padding-block: 24px; }
+  body.picking .mapwrap { height: 58dvh; }
+  body.typing .submitbar { position: static; background: none; }
+  .top-link, .navbtn { min-height: 44px; display: inline-flex; align-items: center; }
+}
+@media (max-width: 420px) { h1 { font-size: 1.5rem; } .total strong { font-size: 1.5rem; } }
+
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+
+.view { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.navbtn { border: 0; background: none; color: var(--muted); text-decoration: underline; cursor: pointer; font-size: .85rem; padding: 12px 4px; }
+.tabs { display: flex; gap: 6px; padding: 8px 16px 0; background: var(--surface); border-bottom: 1px solid var(--line); }
+.tabs button { border: 0; background: none; padding: 10px 14px; font-weight: 600; color: var(--muted); border-bottom: 3px solid transparent; cursor: pointer; }
+.tabs button.on { color: var(--ink); border-bottom-color: var(--brand); }
+#kapp { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+#k-pesanan { flex: 1; min-height: 0; }
+.settings { flex: 1; overflow-y: auto; padding: 20px 16px 40px; }
+.settings form { max-width: 720px; margin: 0 auto; display: flex; flex-direction: column; gap: 22px; }
+.setgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
+.setgroup { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+.sizerow { display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 10px; }
+.warn { background: color-mix(in srgb, var(--signal) 28%, var(--surface)); border-radius: 10px; padding: 10px 14px; font-size: .9rem; }
+.errbar { position: sticky; top: 0; z-index: 3000; background: var(--danger); color: #fff; padding: 10px 16px; font-size: .9rem; line-height: 1.4; }
+.linkbox { display: flex; gap: 8px; }
+.linkbox input { flex: 1; font-size: .8rem; }
+@media (max-width: 560px) { .sizerow { grid-template-columns: 1fr; } }
+@media (max-width: 820px) {
+  body.courier { --navh: calc(58px + env(safe-area-inset-bottom, 0px)); --sbpad: 12px; }
+  body.courier .tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 950; padding: 0 8px env(safe-area-inset-bottom, 0px); gap: 0; border-top: 1px solid var(--line); border-bottom: 0; }
+  body.courier .tabs button { flex: 1; min-height: 58px; border-bottom: 0; border-top: 3px solid transparent; font-size: 1rem; }
+  body.courier .tabs button.on { border-top-color: var(--brand); }
+  body.courier .settings { padding-bottom: calc(var(--navh) + 24px); }
+  body.courier .toast { bottom: calc(var(--navh) + 16px); }
+  .setgroup { padding: 14px; }
+  .navbtn { font-size: .9rem; }
+}
+#boot-load { position: fixed; inset: 0; z-index: 4000; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 24px; text-align: center; }
+#boot-load .spin { width: 34px; height: 34px; border-radius: 50%; border: 4px solid var(--line); border-top-color: var(--brand); animation: spin 0.9s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
 </head>
-
 <body>
-    <p>Membuka Aplikasi...</p>
+<div id="boot-load" role="status"><div class="spin"></div><p>Memuat aplikasi...</p></div>
+<div class="errbar" id="errbar" role="alert" hidden></div>
+<script>
+(function () {
+  function show(m) { var b = document.getElementById('errbar'); if (b) { b.hidden = false; b.textContent = m; } }
+  window.addEventListener('error', function (e) {
+    if (e.target && e.target.tagName === 'SCRIPT') { show('Gagal memuat skrip: ' + (e.target.src || '').slice(0, 80)); return; }
+    if (e.message) show('Kesalahan: ' + e.message + ' [' + e.lineno + ':' + e.colno + ']');
+  }, true);
+  window.addEventListener('unhandledrejection', function (e) { show('Terjadi kesalahan: ' + ((e.reason && e.reason.message) || e.reason)); });
+})();
+</script>
+<header class="top">
+  <a class="brand" href="#" id="brand-link">
+    <svg id="brand-ico" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="6" r="2.5"/><path d="M6 15.5V11a3 3 0 0 1 3-3h6.5"/></svg>
+    <img class="brand-logo" id="brand-logo" alt="" hidden>
+    <span id="brand">Antar Jemput</span>
+  </a>
+  <button class="navbtn" id="nav-sw" type="button" hidden>Halaman pelanggan</button>
+</header>
+
+<!-- ================= PELANGGAN ================= -->
+<div class="view" id="v-pel">
+<main class="shell">
+  <section class="panel" aria-label="Pesan antar jemput">
+    <form id="order-form" novalidate style="display:flex;flex-direction:column;gap:18px">
+      <div>
+        <h1>Antar jemput barang</h1>
+        <p class="sub">Isi titik jemput dan tujuan. Ongkos dihitung dari jarak rute sebenarnya.</p>
+      </div>
+      <div class="field" id="f-pickup">
+        <label class="lbl" for="in-pickup">Jemput dari</label>
+        <div class="addr"><span class="dot">A</span><input class="in" id="in-pickup" type="text" placeholder="Cari alamat atau nama tempat" autocomplete="off"></div>
+        <ul class="sugg" hidden></ul>
+        <div class="addr-actions">
+          <button type="button" class="chip" data-act="gps">Lokasi saya</button>
+          <button type="button" class="chip" data-act="map">Pilih di peta</button>
+        </div>
+      </div>
+      <div class="field" id="f-dropoff">
+        <label class="lbl" for="in-dropoff">Antar ke</label>
+        <div class="addr"><span class="dot b">B</span><input class="in" id="in-dropoff" type="text" placeholder="Cari alamat tujuan" autocomplete="off"></div>
+        <ul class="sugg" hidden></ul>
+        <div class="addr-actions"><button type="button" class="chip" data-act="map">Pilih di peta</button></div>
+      </div>
+      <fieldset class="field" style="border:0;padding:0;margin:0;min-width:0">
+        <legend class="lbl" style="padding:0;margin-bottom:6px">Ukuran barang</legend>
+        <div class="sizes" id="ukuran"></div>
+      </fieldset>
+      <div class="field">
+        <label class="lbl" for="in-barang">Barang apa yang diantar</label>
+        <input class="in" id="in-barang" type="text" maxlength="200" placeholder="Contoh: dokumen, 2 kardus pesanan">
+      </div>
+      <div class="field">
+        <label class="lbl" for="in-catatan">Catatan untuk kurir (boleh kosong)</label>
+        <textarea class="in" id="in-catatan" rows="2" maxlength="300" placeholder="Contoh: titip ke satpam, hubungi dulu sebelum sampai"></textarea>
+      </div>
+      <div class="two">
+        <div class="field"><label class="lbl" for="in-nama">Nama</label><input class="in" id="in-nama" type="text" maxlength="60" autocomplete="name"></div>
+        <div class="field"><label class="lbl" for="in-hp">No. WhatsApp</label><input class="in" id="in-hp" type="tel" inputmode="tel" maxlength="20" autocomplete="tel" placeholder="08xxxxxxxxxx"></div>
+      </div>
+      <fieldset class="field" id="f-bayar" style="border:0;padding:0;margin:0;min-width:0">
+        <legend class="lbl" style="padding:0;margin-bottom:6px">Metode pembayaran</legend>
+        <div class="sizes pay" id="bayar-opts"></div>
+      </fieldset>
+      <div id="price" class="pricecard muted" aria-live="polite"></div>
+      <div class="submitbar">
+        <p class="err-msg" id="form-err" role="alert"></p>
+        <button class="btn primary block" id="submit" type="submit" disabled>Pesan sekarang</button>
+        <p class="note" id="pay-note"></p>
+      </div>
+    </form>
+
+    <div id="track" hidden style="display:flex;flex-direction:column;gap:18px">
+      <div class="status-head">
+        <span class="pill" id="t-pill"></span>
+        <h1 id="t-title"></h1>
+        <p class="sub">Kode pesanan <span class="code" id="t-code"></span></p>
+      </div>
+      <div class="eta" id="t-eta" aria-live="polite"></div>
+      <div class="card" id="t-pay" hidden></div>
+      <ol class="timeline" id="t-line"></ol>
+      <div class="card"><dl class="rows" id="t-rows"></dl></div>
+      <div class="field">
+        <label class="lbl" for="t-link">Tautan pelacakan</label>
+        <div class="linkbox"><input class="in" id="t-link" readonly><button class="btn" id="t-copy" type="button">Salin</button></div>
+      </div>
+      <div class="actions" id="t-actions"></div>
+      <p class="err-msg" id="t-err" role="alert"></p>
+    </div>
+  </section>
+  <div class="mapwrap"><div id="map"></div></div>
+</main>
+</div>
+
+<!-- ================= KURIR ================= -->
+<div class="view" id="v-kur" hidden>
+  <section class="gate" id="gate">
+    <div><h1>Masuk kurir</h1><p class="sub">Masukkan PIN dari pemilik layanan.</p></div>
+    <form id="gate-form" style="display:flex;flex-direction:column;gap:12px">
+      <label class="lbl" for="pin">PIN</label>
+      <input class="in" id="pin" type="password" inputmode="numeric" autocomplete="current-password" required>
+      <p class="err-msg" id="gate-err" role="alert"></p>
+      <button class="btn primary" type="submit">Masuk</button>
+    </form>
+  </section>
+
+  <div id="kapp" hidden>
+    <div class="tabs" role="tablist">
+      <button type="button" class="on" data-tab="pesanan" role="tab">Pesanan</button>
+      <button type="button" data-tab="setelan" role="tab">Pengaturan</button>
+    </div>
+    <main class="kshell" id="k-pesanan">
+      <aside class="klist" aria-label="Daftar pesanan">
+        <div id="pin-warn" class="warn" hidden>PIN masih bawaan. Ganti di tab Pengaturan agar pesanan Anda aman.</div>
+        <h2>Pesanan</h2>
+        <div id="list" style="display:flex;flex-direction:column;gap:10px"></div>
+      </aside>
+      <div class="kmain">
+        <div class="kback"><button type="button" id="btn-back">← Semua pesanan</button><span class="code" id="kback-code"></span></div>
+        <div class="kmap"><div id="kmap"></div></div>
+        <div class="kdetail" id="detail"></div>
+      </div>
+    </main>
+    <section class="settings" id="k-setelan" hidden>
+      <form id="set-form" novalidate>
+        <div><h1>Pengaturan</h1><p class="sub">Perubahan langsung dipakai pelanggan yang membuka aplikasi setelah ini. Data yang sama bisa diedit di sheet "Pengaturan".</p></div>
+        <div class="setgroup">
+          <h2>Aplikasi</h2>
+          <div class="setgrid">
+            <div class="field"><label class="lbl" for="s-nama">Nama aplikasi</label><input class="in" id="s-nama" name="nama" maxlength="40"></div>
+            <div class="field"><label class="lbl" for="s-kurirNama">Nama kurir</label><input class="in" id="s-kurirNama" name="kurirNama" maxlength="40"></div>
+            <div class="field"><label class="lbl" for="s-kurirWa">WhatsApp kurir (62...)</label><input class="in" id="s-kurirWa" name="kurirWa" inputmode="numeric" maxlength="20"></div>
+          </div>
+        </div>
+        <div class="setgroup">
+          <h2>Pembayaran</h2>
+          <label class="chk"><input type="checkbox" id="s-bayar_tunai"> Terima tunai (bayar ke kurir saat barang sampai)</label>
+          <label class="chk"><input type="checkbox" id="s-bayar_transfer"> Terima transfer bank (pesanan diproses setelah pembayaran Anda konfirmasi)</label>
+          <div class="setgrid">
+            <div class="field"><label class="lbl" for="s-bank_nama">Nama bank</label><input class="in" id="s-bank_nama" name="bank_nama" maxlength="40" placeholder="Contoh: BCA"></div>
+            <div class="field"><label class="lbl" for="s-bank_rek">Nomor rekening</label><input class="in" id="s-bank_rek" name="bank_rek" inputmode="numeric" maxlength="30"></div>
+            <div class="field"><label class="lbl" for="s-bank_atas">Atas nama</label><input class="in" id="s-bank_atas" name="bank_atas" maxlength="60"></div>
+          </div>
+          <div class="field"><label class="lbl" for="s-bayar_catatan">Catatan untuk pelanggan (boleh kosong)</label><input class="in" id="s-bayar_catatan" name="bayar_catatan" maxlength="160" placeholder="Contoh: Cantumkan kode pesanan di berita transfer"></div>
+          <div class="field"><label class="lbl" for="s-bayar_batas_menit">Batal otomatis bila belum dibayar (menit, 0 = tidak pernah)</label><input class="in" id="s-bayar_batas_menit" name="bayar_batas_menit" inputmode="numeric" maxlength="4"></div>
+          <p class="note">Pesanan transfer yang belum dibayar dibatalkan otomatis setelah batas waktu itu. Pesanan yang pelanggannya sudah menekan "Saya sudah transfer" tidak ikut dibatalkan, Anda yang memutuskan setelah mengecek mutasi.</p>
+          <p class="note">Konfirmasi pembayaran lewat WhatsApp kurir (nomor di bagian Aplikasi). Pelanggan mengirim bukti transfer ke nomor itu, lalu Anda mencocokkannya dengan mutasi rekening dan menekan tombol konfirmasi di halaman pesanan.</p>
+        </div>
+        <div class="setgroup">
+          <h2>Warna tema</h2>
+          <div class="swatches" id="swatches" role="group" aria-label="Pilihan warna"></div>
+          <div class="color-row">
+            <label class="lbl" for="s-warna">Warna lain</label>
+            <input type="color" class="colorin" id="s-warna" name="warna" value="#0c6b4f">
+            <span class="code" id="warna-hex"></span>
+            <button class="chip" type="button" id="warna-reset">Kembalikan bawaan</button>
+          </div>
+          <p class="note">Warna dipakai untuk tombol, penanda, dan rute di peta. Teks dan latar menyesuaikan otomatis, termasuk mode gelap. Pratinjau langsung terlihat, tekan Simpan pengaturan untuk menerapkannya ke pelanggan.</p>
+        </div>
+        <div class="setgroup">
+          <h2>Logo</h2>
+          <div class="logo-row">
+            <div class="logo-box"><img id="logo-prev" alt="Pratinjau logo" hidden><span class="note" id="logo-empty">Belum ada logo</span></div>
+            <div class="logo-actions">
+              <button class="btn" type="button" id="s-logo-pick">Pilih logo</button>
+              <button class="btn danger" type="button" id="s-logo-del" hidden>Hapus logo</button>
+              <input type="file" id="s-logo-file" accept="image/png,image/jpeg,image/webp" hidden>
+            </div>
+          </div>
+          <p class="note" id="logo-note" role="status"></p>
+          <p class="note">Bila logo dipasang, hanya logo yang tampil di header (ikon bawaan dan nama aplikasi disembunyikan). Judul tab browser tetap memakai nama aplikasi.</p>
+          <p class="note"><strong>Rekomendasi ukuran:</strong> PNG berlatar transparan (atau WebP/JPG). Logo persegi 512 x 512 px, atau logo lebar dengan rasio maksimal 3:1 (contoh 900 x 300 px). Aplikasi mengecilkannya otomatis ke maksimal 360 x 160 px dan sekitar 33 KB. Di header tampil setinggi 36 px, jadi hindari tulisan yang terlalu kecil dan pakai warna yang terbaca di latar terang maupun gelap. SVG tidak didukung.</p>
+        </div>
+        <div class="setgroup">
+          <h2>Tarif</h2>
+          <div class="setgrid">
+            <div class="field"><label class="lbl" for="s-dasar">Tarif dasar (Rp)</label><input class="in" id="s-dasar" name="dasar" inputmode="decimal"></div>
+            <div class="field"><label class="lbl" for="s-kmTermasuk">Km termasuk tarif dasar</label><input class="in" id="s-kmTermasuk" name="kmTermasuk" inputmode="decimal"></div>
+            <div class="field"><label class="lbl" for="s-perKm">Tarif per km (Rp)</label><input class="in" id="s-perKm" name="perKm" inputmode="decimal"></div>
+            <div class="field"><label class="lbl" for="s-minimum">Ongkos minimum (Rp)</label><input class="in" id="s-minimum" name="minimum" inputmode="decimal"></div>
+            <div class="field"><label class="lbl" for="s-pembulatan">Pembulatan ke atas (Rp)</label><input class="in" id="s-pembulatan" name="pembulatan" inputmode="decimal"></div>
+            <div class="field"><label class="lbl" for="s-maksJarakKm">Jarak maksimum (km)</label><input class="in" id="s-maksJarakKm" name="maksJarakKm" inputmode="decimal"></div>
+          </div>
+          <div id="size-rows" style="display:flex;flex-direction:column;gap:12px"></div>
+        </div>
+        <div class="setgroup">
+          <h2>Peta</h2>
+          <p class="note">Titik tengah peta saat pelanggan membuka aplikasi dan wilayah pencarian alamat.</p>
+          <div class="setgrid">
+            <div class="field"><label class="lbl" for="s-pusat_lat">Lintang</label><input class="in" id="s-pusat_lat" name="pusat_lat" inputmode="decimal"></div>
+            <div class="field"><label class="lbl" for="s-pusat_lng">Bujur</label><input class="in" id="s-pusat_lng" name="pusat_lng" inputmode="decimal"></div>
+            <div class="field"><label class="lbl" for="s-pusat_zoom">Zoom</label><input class="in" id="s-pusat_zoom" name="pusat_zoom" inputmode="decimal"></div>
+          </div>
+          <div class="field"><label class="lbl" for="s-peta_gaya">Gaya peta</label>
+            <select class="in" id="s-peta_gaya" name="peta_gaya">
+              <option value="carto">Carto (disarankan)</option>
+              <option value="osm">OpenStreetMap standar</option>
+              <option value="esri">Esri</option>
+            </select>
+            <p class="note">Jika gambar peta tidak tampil di HP pelanggan, ganti gaya lalu simpan.</p></div>
+          <div><button class="chip" type="button" id="s-here">Pakai lokasi saya</button></div>
+        </div>
+        <div class="setgroup">
+          <h2>Keamanan</h2>
+          <div class="field"><label class="lbl" for="s-pin">PIN baru (kosongkan jika tidak diganti)</label><input class="in" id="s-pin" type="password" autocomplete="new-password" maxlength="30"></div>
+        </div>
+        <p class="err-msg" id="set-err" role="alert"></p>
+        <div class="stickybar"><button class="btn primary" type="submit" id="set-save">Simpan pengaturan</button></div>
+      </form>
+    </section>
+  </div>
+</div>
+
+<script>
+window.startApp = () => {
+'use strict';
+const $ = (s) => document.querySelector(s);
+let cfg = BOOT.cfg;
+const banner = (msg) => { const b = document.getElementById('errbar'); if (b) { b.hidden = false; b.textContent = msg; } };
+
+/* Jika pustaka peta gagal dimuat, formulir tetap bisa dipakai tanpa peta. (versi ES5, tanpa class) */
+if (typeof L === 'undefined') {
+  var Lyr = function () {};
+  Lyr.prototype.addTo = function (t) { if (t && t.addLayer) t.addLayer(this); return this; };
+  Lyr.prototype.bindTooltip = function () { return this; };
+  Lyr.prototype.on = function () { return this; };
+  var Grp = function () { this.l = []; };
+  Grp.prototype = Object.create(Lyr.prototype);
+  Grp.prototype.addLayer = function (x) { this.l.push(x); };
+  Grp.prototype.removeLayer = function (x) { this.l = this.l.filter(function (y) { return y !== x; }); };
+  Grp.prototype.clearLayers = function () { this.l = []; };
+  var Mk = function (ll) { this.ll = { lat: ll[0], lng: ll[1] }; };
+  Mk.prototype = Object.create(Lyr.prototype);
+  Mk.prototype.setLatLng = function (ll) { this.ll = { lat: ll[0], lng: ll[1] }; };
+  Mk.prototype.getLatLng = function () { return this.ll; };
+  window.L = {
+    map: function (id) {
+      var el = document.getElementById(id);
+      el.style.background = 'repeating-linear-gradient(45deg, var(--soft), var(--soft) 10px, var(--line) 10px, var(--line) 11px)';
+      var m = { setView: function () { return m; }, fitBounds: function () { return m; }, addLayer: function () {}, removeLayer: function () {},
+        on: function () { return m; }, getContainer: function () { return el; }, invalidateSize: function () {} };
+      return m;
+    },
+    control: { zoom: function () { return { addTo: function () {} }; } },
+    tileLayer: function () { return { addTo: function () { return { on: function () {} }; }, on: function () {} }; },
+    layerGroup: function () { return new Grp(); },
+    marker: function (ll) { return new Mk(ll); },
+    polyline: function () { return new Lyr(); },
+    divIcon: function (o) { return o; }
+  };
+  banner('Peta tidak bisa dimuat. Anda tetap bisa memesan dengan mengetik alamat atau memakai tombol Lokasi saya.');
+}
+
+/* ======================= helper ======================= */
+const AJ = {};
+AJ.rupiah = (n) => 'Rp ' + Math.round(n).toLocaleString('id-ID');
+AJ.km = (n) => n.toLocaleString('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' km';
+AJ.esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+AJ.debounce = (fn, ms) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
+AJ.haversine = (a, b) => {
+  const r = (x) => (x * Math.PI) / 180, dLat = r(b.lat - a.lat), dLng = r(b.lng - a.lng);
+  const h = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(r(a.lat)) * Math.cos(r(b.lat)) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  return 12742 * Math.asin(Math.sqrt(h));
+};
+AJ.STATUS = { menunggu_bayar: 'Menunggu pembayaran', menunggu: 'Mencari kurir', diterima: 'Pesanan diterima', menuju_jemput: 'Kurir menuju lokasi jemput',
+  mengantar: 'Barang sedang diantar', selesai: 'Barang sudah sampai', batal: 'Pesanan dibatalkan' };
+AJ.SHORT = { menunggu_bayar: 'Bayar', menunggu: 'Baru', diterima: 'Diterima', menuju_jemput: 'Jemput', mengantar: 'Antar', selesai: 'Selesai', batal: 'Batal' };
+AJ.ago = (ms) => {
+  const s = Math.max(0, Math.round((Date.now() - ms) / 1000));
+  if (s < 60) return s + ' detik lalu';
+  if (s < 3600) return Math.round(s / 60) + ' menit lalu';
+  return Math.round(s / 3600) + ' jam lalu';
+};
+AJ.toast = (msg) => {
+  const t = document.createElement('div');
+  t.className = 'toast'; t.setAttribute('role', 'status'); t.textContent = msg;
+  document.body.appendChild(t); setTimeout(() => t.remove(), 3200);
+};
+AJ.store = {
+  get(k) { try { return localStorage.getItem(k) || ''; } catch (_e) { return ''; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch (_e) { /* abaikan */ } },
+  del(k) { try { localStorage.removeItem(k); } catch (_e) { /* abaikan */ } },
+};
+AJ.decode = (str) => { // polyline terenkode Google
+  const out = []; let i = 0, lat = 0, lng = 0;
+  while (i < str.length) {
+    let b, sh = 0, r = 0;
+    do { b = str.charCodeAt(i++) - 63; r |= (b & 31) << sh; sh += 5; } while (b >= 32);
+    lat += (r & 1) ? ~(r >> 1) : (r >> 1);
+    sh = 0; r = 0;
+    do { b = str.charCodeAt(i++) - 63; r |= (b & 31) << sh; sh += 5; } while (b >= 32);
+    lng += (r & 1) ? ~(r >> 1) : (r >> 1);
+    out.push([lat / 1e5, lng / 1e5]);
+  }
+  return out;
+};
+AJ.pathOf = (o) => {
+  const p = o.rute ? AJ.decode(o.rute) : [];
+  return p.length > 1 ? p : [[o.pickup.lat, o.pickup.lng], [o.dropoff.lat, o.dropoff.lng]];
+};
+
+AJ.call = (action, data) => window.apiCall(action, data);
+
+AJ.TILES = {
+  carto: { url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', opt: { subdomains: 'abcd', maxZoom: 20, attribution: '&copy; OpenStreetMap contributors &copy; CARTO' } },
+  osm: { url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', opt: { maxZoom: 19, referrerPolicy: 'origin', attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>' } },
+  esri: { url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', opt: { maxZoom: 19, attribution: 'Tiles &copy; Esri' } },
+};
+AJ.makeMap = (id) => {
+  const map = L.map(id, { zoomControl: false }).setView([cfg.pusat.lat, cfg.pusat.lng], cfg.pusat.zoom);
+  L.control.zoom({ position: 'bottomright' }).addTo(map);
+  const t = AJ.TILES[cfg.pusat.gaya] || AJ.TILES.osm;
+  const layer = L.tileLayer(t.url, t.opt).addTo(map);
+  let ok = 0, bad = 0;
+  layer.on('tileload', () => { ok++; });
+  layer.on('tileerror', () => { bad++; if (bad === 6 && !ok) banner('Gambar peta tidak bisa dimuat. Periksa koneksi internet, atau ganti Gaya peta di Pengaturan kurir.'); });
+  if (window.ResizeObserver) new ResizeObserver(() => map.invalidateSize()).observe(document.getElementById(id));
+  return map;
+};
+AJ.pinIcon = (label, kind) => L.divIcon({ className: '', html: ('<div class="aj-pin ' + (kind) + '">' + (label) + '</div>'), iconSize: [30, 30], iconAnchor: [15, 15] });
+AJ.kurirIcon = () => L.divIcon({ className: 'smooth', iconSize: [38, 38], iconAnchor: [19, 19],
+  html: '<div class="aj-kurir"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-label="Kurir"><circle cx="5.5" cy="16.5" r="2.5"/><circle cx="18.5" cy="16.5" r="2.5"/><path d="M8 16.5h5l3-7h-3.5M13 9.5 12 6.5H9"/></svg></div>' });
+AJ.reverse = async (lat, lng) => {
+  try { const d = await AJ.call('reverse', { lat, lng }); if (d && d.alamat) return d.alamat; } catch (_e) { /* pakai koordinat */ }
+  return ((lat.toFixed(5)) + ', ' + (lng.toFixed(5)));
+};
+
+/* ---- warna tema ---- */
+AJ.WARNA = '#0C6B4F';
+AJ.PRESET = [['#0C6B4F', 'Hijau'], ['#1D5FD0', 'Biru'], ['#0F766E', 'Teal'], ['#D32F2F', 'Merah'], ['#E8590C', 'Oranye'], ['#6D3FC4', 'Ungu'], ['#C2255C', 'Merah muda'], ['#334155', 'Abu tua']];
+AJ.rgb = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+AJ.hex = (c) => '#' + c.map((v) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')).join('').toUpperCase();
+AJ.lum = (c) => { const f = c.map((v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }); return 0.2126 * f[0] + 0.7152 * f[1] + 0.0722 * f[2]; };
+AJ.contrast = (a, b) => { const x = AJ.lum(a), y = AJ.lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
+AJ.ink = (c) => (AJ.contrast(c, [255, 255, 255]) >= AJ.contrast(c, [18, 35, 27]) ? '#FFFFFF' : '#12231B');
+AJ.theme = (hex) => {
+  if (!/^#[0-9a-fA-F]{6}$/.test(hex || '')) hex = AJ.WARNA;
+  const c = AJ.rgb(hex);
+  let d = c;
+  for (let t = 0; t <= 0.9 && AJ.lum(d) < 0.3; t += 0.05) d = c.map((v) => v + (255 - v) * t); // di mode gelap warna gelap dicerahkan
+  return { light: AJ.hex(c), lightInk: AJ.ink(c), dark: AJ.hex(d), darkInk: AJ.ink(d) };
+};
+AJ.applyTheme = (hex) => {
+  const t = AJ.theme(hex);
+  let el = document.getElementById('theme-style');
+  if (!el) { el = document.createElement('style'); el.id = 'theme-style'; document.head.appendChild(el); }
+  el.textContent = ':root{--brand:' + t.light + ';--brand-ink:' + t.lightInk + '}' +
+    '@media (prefers-color-scheme: dark){:root{--brand:' + t.dark + ';--brand-ink:' + t.darkInk + '}}';
+  const m = document.querySelector('meta[name="theme-color"]'); if (m) m.setAttribute('content', t.light);
+};
+AJ.brand = () => (getComputedStyle(document.documentElement).getPropertyValue('--brand').trim() || AJ.WARNA);
+
+AJ.pay = (o) => o.bayar || { metode: 'tunai', status: 'tunai' };
+AJ.payLabel = (o) => {
+  const p = AJ.pay(o);
+  if (p.metode !== 'transfer') return 'Tunai ke kurir saat barang sampai';
+  if (p.status === 'lunas') return 'Transfer (sudah dikonfirmasi)';
+  if (o.status === 'batal') return 'Transfer (dibatalkan)';
+  return p.status === 'dilaporkan' ? 'Transfer (pelanggan melapor sudah transfer, cek mutasi)' : 'Transfer (menunggu konfirmasi)';
+};
+AJ.reported = (o) => o.status === 'menunggu_bayar' && AJ.pay(o).status === 'dilaporkan';
+AJ.stKey = (o) => (AJ.reported(o) ? 'dilaporkan' : o.status);
+AJ.shortOf = (o) => (AJ.reported(o) ? 'Cek bayar' : AJ.SHORT[o.status]);
+AJ.statusOf = (o) => (AJ.reported(o) ? 'Pembayaran sedang diperiksa' : AJ.STATUS[o.status]);
+AJ.bySystem = (o) => (o.riwayat || []).some((r) => r.oleh === 'sistem');
+AJ.canCancel = (o) => ['menunggu_bayar', 'menunggu', 'diterima'].includes(o.status) && AJ.pay(o).status !== 'lunas';
+
+AJ.logoFromFile = (file) => new Promise((ok, no) => {
+  if (!/^image\/(png|jpeg|webp)$/.test(file.type)) return no(new Error('Format harus PNG, JPG, atau WebP.'));
+  if (file.size > 5 * 1024 * 1024) return no(new Error('Ukuran file maksimal 5 MB.'));
+  const url = URL.createObjectURL(file), img = new Image();
+  img.onerror = () => { URL.revokeObjectURL(url); no(new Error('Gambar tidak bisa dibaca.')); };
+  img.onload = () => {
+    URL.revokeObjectURL(url);
+    const MAXW = 360, MAXH = 160, LIMIT = 45000;
+    const base = Math.min(1, MAXW / img.naturalWidth, MAXH / img.naturalHeight);
+    const jpg = file.type === 'image/jpeg';
+    const fmts = jpg ? ['image/jpeg'] : ['image/png', 'image/webp'];
+    for (const sc of [1, 0.85, 0.7, 0.55, 0.4]) {
+      const w = Math.max(1, Math.round(img.naturalWidth * base * sc)), h = Math.max(1, Math.round(img.naturalHeight * base * sc));
+      const c = document.createElement('canvas'); c.width = w; c.height = h;
+      const g = c.getContext('2d');
+      if (jpg) { g.fillStyle = '#fff'; g.fillRect(0, 0, w, h); }
+      g.drawImage(img, 0, 0, w, h);
+      for (const f of fmts) {
+        for (const q of [0.92, 0.8, 0.65]) {
+          const out = c.toDataURL(f, q);
+          if (out.indexOf('data:' + f) === 0 && out.length <= LIMIT) return ok(out);
+          if (f === 'image/png') break;
+        }
+      }
+    }
+    no(new Error('Logo terlalu detail untuk disimpan. Pakai gambar yang lebih sederhana.'));
+  };
+  img.src = url;
+});
+
+AJ.addressField = (root, { map, layer, kind, onChange }) => {
+  const input = root.querySelector('input'), list = root.querySelector('.sugg');
+  const btnGps = root.querySelector('[data-act="gps"]'), btnMap = root.querySelector('[data-act="map"]');
+  let value = null, marker = null;
+  const api = {
+    get: () => value,
+    set(lat, lng, alamat) {
+      value = { lat, lng, alamat }; input.value = alamat;
+      if (!marker) {
+        marker = L.marker([lat, lng], { icon: AJ.pinIcon(kind === 'pickup' ? 'A' : 'B', kind), draggable: true }).addTo(layer);
+        marker.on('dragend', async () => {
+          const ll = marker.getLatLng();
+          value = { lat: ll.lat, lng: ll.lng, alamat: ((ll.lat.toFixed(5)) + ', ' + (ll.lng.toFixed(5))) };
+          input.value = 'Mencari alamat...'; onChange(value);
+          const a = await AJ.reverse(ll.lat, ll.lng);
+          if (value && value.lat === ll.lat && value.lng === ll.lng) { value.alamat = a; input.value = a; }
+        });
+      } else marker.setLatLng([lat, lng]);
+      list.hidden = true; onChange(value);
+    },
+    async setFromMap(lat, lng) {
+      api.set(lat, lng, ((lat.toFixed(5)) + ', ' + (lng.toFixed(5))));
+      input.value = 'Mencari alamat...';
+      const a = await AJ.reverse(lat, lng);
+      if (value && value.lat === lat && value.lng === lng) { value.alamat = a; input.value = a; }
+    },
+  };
+  const search = AJ.debounce(async () => {
+    const q = input.value.trim();
+    if (q.length < 3) { list.hidden = true; return; }
+    list.hidden = false; list.innerHTML = '<li class="none">Mencari...</li>';
+    try {
+      const res = await AJ.call('geocode', { q });
+      list.innerHTML = '';
+      if (!res.length) { list.innerHTML = '<li class="none">Alamat tidak ditemukan. Coba "Pilih di peta".</li>'; return; }
+      for (const r of res) {
+        const li = document.createElement('li'), b = document.createElement('button');
+        b.type = 'button'; b.textContent = r.alamat;
+        b.addEventListener('click', () => api.set(r.lat, r.lng, r.alamat));
+        li.appendChild(b); list.appendChild(li);
+      }
+    } catch (e) { list.innerHTML = ('<li class="none">' + (AJ.esc(e.message)) + ' Gunakan "Pilih di peta".</li>'); }
+  }, 450);
+  input.addEventListener('input', () => { value = null; onChange(null); search(); });
+  document.addEventListener('click', (e) => { if (!root.contains(e.target)) list.hidden = true; });
+  if (btnGps) btnGps.addEventListener('click', () => {
+    if (!navigator.geolocation) return AJ.toast('Perangkat ini tidak mendukung GPS.');
+    btnGps.disabled = true;
+    navigator.geolocation.getCurrentPosition(
+      (p) => { btnGps.disabled = false; api.setFromMap(p.coords.latitude, p.coords.longitude); },
+      () => { btnGps.disabled = false; AJ.toast('Lokasi tidak bisa dibaca. Gunakan "Pilih di peta" atau ketik alamat.'); },
+      { enableHighAccuracy: true, timeout: 12000 });
+  });
+  btnMap.addEventListener('click', () => {
+    const on = AJ.picking !== api;
+    AJ.picking = on ? api : null;
+    document.querySelectorAll('[data-act="map"]').forEach((b) => b.classList.remove('on'));
+    map.getContainer().classList.toggle('picking', on);
+    document.body.classList.toggle('picking', on);
+    if (on) { btnMap.classList.add('on'); AJ.toast('Ketuk lokasi di peta.'); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+  });
+  map.on('click', (e) => {
+    if (AJ.picking !== api) return;
+    AJ.picking = null; btnMap.classList.remove('on'); map.getContainer().classList.remove('picking');
+    document.body.classList.remove('picking');
+    api.setFromMap(e.latlng.lat, e.latlng.lng);
+    root.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  });
+  return api;
+};
+
+/* Saat keyboard HP terbuka, bilah pesan berhenti menempel agar tidak menutupi kolom. */
+if (window.matchMedia && matchMedia('(max-width: 820px)').matches) {
+  const isField = (el) => el && el.matches && el.matches('input.in, textarea.in');
+  const vv = window.visualViewport;
+  let base = Math.max(window.innerHeight, vv ? vv.height : 0);
+  const keyboard = () => (vv ? Math.min(vv.height, window.innerHeight) : window.innerHeight) < base * 0.75;
+  const upd = () => document.body.classList.toggle('typing', isField(document.activeElement) && keyboard());
+  ['focusin', 'focusout'].forEach((ev) => document.addEventListener(ev, () => setTimeout(upd, 120)));
+  if (vv) vv.addEventListener('resize', upd);
+  window.addEventListener('resize', upd);
+  window.addEventListener('orientationchange', () => setTimeout(() => { base = Math.max(window.innerHeight, vv ? vv.height : 0); upd(); }, 400));
+}
+
+/* ======================= pelanggan ======================= */
+let custMap = null;
+let custStarted = false;
+function startCustomer() {
+  if (custStarted) { setTimeout(() => custMap.invalidateSize(), 50); return; }
+  custStarted = true;
+  const map = custMap = AJ.makeMap('map');
+  const formLayer = L.layerGroup().addTo(map), trackLayer = L.layerGroup().addTo(map);
+  const st = { ukuran: 'kecil', quote: null };
+  let routeLine = null;
+
+  for (const [k, u] of Object.entries(cfg.tarif.ukuran)) {
+    $('#ukuran').insertAdjacentHTML('beforeend',
+      ('<label class="opt"><input type="radio" name="ukuran" value="' + (k) + '" ' + (k === 'kecil' ? 'checked' : '') + '>\n       <span class="opt-t">' + (AJ.esc(u.label)) + '</span><span class="opt-s">' + (AJ.esc(u.ket)) + '</span>\n       <span class="opt-p">' + (u.tambahan ? '+' + AJ.rupiah(u.tambahan) : 'Tanpa tambahan') + '</span></label>'));
+  }
+  $('#ukuran').addEventListener('change', (e) => { st.ukuran = e.target.value; requote(); });
+
+  const PAY = [['tunai', 'Tunai', 'Bayar ke kurir saat barang sampai'], ['transfer', 'Transfer bank', 'Bayar dulu, konfirmasi lewat WhatsApp']];
+  const payOn = PAY.filter((p) => cfg.bayar && cfg.bayar[p[0]]);
+  st.metode = payOn.length ? payOn[0][0] : 'tunai';
+  $('#bayar-opts').innerHTML = payOn.map((p) => '<label class="opt"><input type="radio" name="metode" value="' + p[0] + '"' + (p[0] === st.metode ? ' checked' : '') +
+    '><span class="opt-t">' + p[1] + '</span><span class="opt-s">' + p[2] + '</span></label>').join('');
+  $('#f-bayar').hidden = payOn.length < 2;
+  const payNote = () => {
+    $('#pay-note').textContent = st.metode === 'transfer'
+      ? 'Transfer dulu, lalu kirim bukti lewat WhatsApp. Kurir mulai bergerak setelah pembayaran dikonfirmasi.'
+      : 'Bayar tunai ke kurir saat barang sampai.';
+  };
+  $('#bayar-opts').addEventListener('change', (e) => { st.metode = e.target.value; payNote(); });
+  payNote();
+
+  const fPick = AJ.addressField($('#f-pickup'), { map, layer: formLayer, kind: 'pickup', onChange: onPoint });
+  const fDrop = AJ.addressField($('#f-dropoff'), { map, layer: formLayer, kind: 'dropoff', onChange: onPoint });
+  function onPoint(v) { if (v) fitForm(); requote(); }
+  function fitForm() {
+    const pts = [fPick.get(), fDrop.get()].filter(Boolean).map((p) => [p.lat, p.lng]);
+    if (pts.length === 2) map.fitBounds(pts, { padding: [60, 60], maxZoom: 16 });
+    else if (pts.length === 1) map.setView(pts[0], 15);
+  }
+  function drawRoute(path) {
+    if (routeLine) { formLayer.removeLayer(routeLine); routeLine = null; }
+    if (path) routeLine = L.polyline(path, { color: AJ.brand(), weight: 5, opacity: .85 }).addTo(formLayer);
+  }
+
+  let seq = 0;
+  const requote = AJ.debounce(async () => {
+    const a = fPick.get(), b = fDrop.get();
+    if (!a || !b) { st.quote = null; drawRoute(null); renderPrice(null); return; }
+    const my = ++seq; renderPrice('loading');
+    try {
+      const q = await AJ.call('quote', { pickup: a, dropoff: b, ukuran: st.ukuran });
+      if (my !== seq) return;
+      st.quote = q; renderPrice(q); drawRoute(AJ.pathOf(q));
+    } catch (e) {
+      if (my !== seq) return;
+      st.quote = null; drawRoute(null); renderPrice({ error: e.message });
+    }
+  }, 350);
+
+  function renderPrice(q) {
+    const el = $('#price'), btn = $('#submit');
+    btn.disabled = true; btn.textContent = 'Pesan sekarang';
+    if (!q) { el.className = 'pricecard muted'; el.textContent = 'Pilih titik jemput dan tujuan untuk melihat ongkos.'; return; }
+    if (q === 'loading') { el.className = 'pricecard'; el.innerHTML = '<div class="skel" style="width:60%"></div><div class="skel" style="width:90%"></div><div class="skel" style="width:40%;height:28px"></div>'; return; }
+    if (q.error) { el.className = 'pricecard err'; el.textContent = q.error; return; }
+    const h = q.harga;
+    el.className = 'pricecard';
+    el.innerHTML = ('\n      <div class="route-meta"><span>' + (AJ.km(q.km)) + '</span><span>\u00b1 ' + (q.menit) + ' menit</span></div>\n      <dl class="rows">\n        <dt>Tarif dasar (' + (h.kmTermasuk) + ' km pertama)</dt><dd>' + (AJ.rupiah(h.dasar)) + '</dd>\n        ' + (h.kmTambahan > 0 ? ('<dt>' + (AJ.km(h.kmTambahan)) + ' \u00d7 ' + (AJ.rupiah(h.perKm)) + '</dt><dd>' + (AJ.rupiah(h.biayaJarak)) + '</dd>') : '') + '\n        ' + (h.biayaUkuran > 0 ? ('<dt>Tambahan ukuran barang</dt><dd>' + (AJ.rupiah(h.biayaUkuran)) + '</dd>') : '') + '\n        ' + (h.pembulatan > 0 ? ('<dt>Pembulatan</dt><dd>' + (AJ.rupiah(h.pembulatan)) + '</dd>') : '') + '\n      </dl>\n      <div class="total"><span>Total</span><strong>' + (AJ.rupiah(h.total)) + '</strong></div>\n      ' + (q.sumber === 'perkiraan' ? '<p class="note">Jarak diperkirakan karena rute detail belum tersedia. Tarif final mengikuti jarak ini.</p>' : ''));
+    btn.disabled = false; btn.textContent = 'Pesan sekarang \u00b7 ' + AJ.rupiah(h.total);
+  }
+  renderPrice(null);
+
+  $('#order-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const err = $('#form-err'); err.textContent = '';
+    if (!st.quote) return;
+    $('#submit').disabled = true;
+    try {
+      const o = await AJ.call('order', { pickup: fPick.get(), dropoff: fDrop.get(), ukuran: st.ukuran, metode: st.metode,
+        barang: $('#in-barang').value, catatan: $('#in-catatan').value, nama: $('#in-nama').value, hp: $('#in-hp').value });
+      AJ.store.set('aj_order', o.id);
+      openTrack(o);
+    } catch (ex) { err.textContent = ex.message; $('#submit').disabled = false; }
+  });
+  $('#in-nama').value = AJ.store.get('aj_nama'); $('#in-hp').value = AJ.store.get('aj_hp');
+  for (const id of ['nama', 'hp']) $('#in-' + id).addEventListener('change', (e) => AJ.store.set('aj_' + id, e.target.value));
+
+  /* ---- pelacakan: ambil data berkala ---- */
+  let cur = null, kurirMk = null, pollTimer = null, polling = false;
+
+  function openTrack(o) {
+    cur = o;
+    $('#order-form').hidden = true; $('#track').hidden = false;
+    document.body.classList.add('tracking'); window.scrollTo(0, 0);
+    map.removeLayer(formLayer);
+    trackLayer.clearLayers(); kurirMk = null;
+    const path = AJ.pathOf(o);
+    L.marker([o.pickup.lat, o.pickup.lng], { icon: AJ.pinIcon('A', 'pickup') }).addTo(trackLayer);
+    L.marker([o.dropoff.lat, o.dropoff.lng], { icon: AJ.pinIcon('B', 'dropoff') }).addTo(trackLayer);
+    L.polyline(path, { color: '#fff', weight: 9, opacity: .9 }).addTo(trackLayer);
+    L.polyline(path, { color: AJ.brand(), weight: 5 }).addTo(trackLayer);
+    map.fitBounds(path, { padding: [60, 60] });
+    $('#t-link').value = ((BOOT.url) + '?id=' + (o.id));
+    if (o.lokasi) setKurir(o.lokasi);
+    render(); schedule(1500);
+  }
+  function setKurir(l) {
+    if (!kurirMk) kurirMk = L.marker([l.lat, l.lng], { icon: AJ.kurirIcon(), zIndexOffset: 1000 }).addTo(trackLayer);
+    else kurirMk.setLatLng([l.lat, l.lng]);
+  }
+  function schedule(ms) {
+    clearTimeout(pollTimer);
+    if (!cur || ['selesai', 'batal'].includes(cur.status)) return;
+    pollTimer = setTimeout(poll, ms);
+  }
+  async function poll() {
+    if (!cur) return;
+    if (document.hidden || polling) return schedule(4000);
+    polling = true;
+    try {
+      const o = await AJ.call('getOrder', { id: cur.id });
+      if (cur && o.id === cur.id) { cur = o; if (o.lokasi) setKurir(o.lokasi); render(); }
+    } catch (_e) { /* coba lagi di putaran berikut */ }
+    polling = false;
+    schedule(['menuju_jemput', 'mengantar'].includes(cur.status) ? 4000 : 7000);
+  }
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && cur) schedule(300); });
+
+  const STEPS = [['diterima', 'Pesanan diterima kurir'], ['menuju_jemput', 'Kurir menuju lokasi jemput'], ['mengantar', 'Barang sedang diantar'], ['selesai', 'Barang sampai']];
+  const ORDER = ['menunggu_bayar', 'menunggu', 'diterima', 'menuju_jemput', 'mengantar', 'selesai'];
+
+  function render() {
+    const o = cur; if (!o) return;
+    $('#t-pill').textContent = o.status === 'batal' ? 'Batal' : o.status === 'selesai' ? 'Selesai' : 'Aktif';
+    $('#t-pill').className = 'pill st-' + o.status;
+    $('#t-title').textContent = AJ.statusOf(o);
+    $('#t-code').textContent = o.id;
+    const idx = ORDER.indexOf(o.status);
+    const steps = AJ.pay(o).metode === 'transfer' ? [['menunggu_bayar', 'Menunggu pembayaran']].concat(STEPS) : STEPS;
+    $('#t-line').innerHTML = o.status === 'batal' ? '' : steps.map(([k, label]) => {
+      const i = ORDER.indexOf(k);
+      return ('<li class="' + (i <= idx ? 'done' : '') + ' ' + (i === idx ? 'now' : '') + '">' + (label) + '</li>');
+    }).join('');
+    const plain = 'style="font-family:var(--f-body)"';
+    $('#t-rows').innerHTML = ('\n      <dt>Dari</dt><dd ' + (plain) + '>' + (AJ.esc(o.pickup.alamat)) + '</dd>\n      <dt>Ke</dt><dd ' + (plain) + '>' + (AJ.esc(o.dropoff.alamat)) + '</dd>\n      <dt>Barang</dt><dd ' + (plain) + '>' + (AJ.esc(o.barang)) + ' (' + (AJ.esc((cfg.tarif.ukuran[o.ukuran] || {}).label || o.ukuran)) + ')</dd>\n      <dt>Jarak</dt><dd>' + (AJ.km(o.km)) + '</dd>\n      <dt>Pembayaran</dt><dd ' + (plain) + '>' + (AJ.esc(AJ.payLabel(o))) + '</dd>\n      <dt>Total bayar</dt><dd><strong>' + (AJ.rupiah(o.harga.total)) + '</strong></dd>');
+    const act = $('#t-actions'); act.innerHTML = '';
+    const aktif = !['selesai', 'batal'].includes(o.status);
+    if ((aktif || AJ.bySystem(o)) && cfg.kurirWa) {
+      const a = document.createElement('a');
+      a.className = 'btn'; a.target = '_blank'; a.rel = 'noopener';
+      a.href = ('https://wa.me/' + (cfg.kurirWa) + '?text=' + (encodeURIComponent('Halo, saya pemesan ' + o.id)));
+      a.textContent = 'Chat WhatsApp kurir'; act.appendChild(a);
+    }
+    if (AJ.canCancel(o)) {
+      const b = document.createElement('button');
+      b.className = 'btn danger'; b.textContent = 'Batalkan pesanan';
+      b.addEventListener('click', async () => {
+        if (b.dataset.sure !== '1') { b.dataset.sure = '1'; b.textContent = o.status === 'menunggu_bayar' ? 'Jika sudah transfer, hubungi kurir dulu. Ketuk lagi untuk membatalkan' : 'Ketuk lagi untuk membatalkan'; return; }
+        try { cur = await AJ.call('cancel', { id: o.id }); render(); }
+        catch (ex) { $('#t-err').textContent = ex.message; }
+      });
+      act.appendChild(b);
+    }
+    if (!aktif) {
+      const b = document.createElement('button');
+      b.className = 'btn primary'; b.textContent = 'Pesan lagi';
+      b.addEventListener('click', newOrder); act.appendChild(b);
+    }
+    renderPay();
+    renderEta();
+  }
+  $('#t-copy').addEventListener('click', async () => {
+    const inp = $('#t-link');
+    try { await navigator.clipboard.writeText(inp.value); AJ.toast('Tautan disalin.'); }
+    catch (_e) { inp.select(); AJ.toast('Tekan lama pada tautan lalu pilih Salin.'); }
+  });
+
+  function renderPay() {
+    const o = cur, el = $('#t-pay'); if (!o) return;
+    const p = AJ.pay(o);
+    if (p.metode !== 'transfer' || o.status !== 'menunggu_bayar') { el.hidden = true; el.innerHTML = ''; el.dataset.k = ''; return; }
+    const key = o.id + ':' + p.status;
+    el.hidden = false;
+    if (el.dataset.k === key) return;
+    el.dataset.k = key;
+    const sudah = p.status === 'dilaporkan';
+    const bk = (cfg.bayar && cfg.bayar.bank) || {};
+    const pesan = 'Halo, saya sudah transfer untuk pesanan ' + o.id + ' sebesar ' + AJ.rupiah(o.harga.total) + ' a.n. ' + o.nama + '. Bukti transfer saya kirim di chat ini.';
+    const plain = 'style="font-family:var(--f-body)"';
+    el.innerHTML = '<h2>Transfer pembayaran</h2>' +
+      '<dl class="rows"><dt>Jumlah</dt><dd><strong>' + AJ.rupiah(o.harga.total) + '</strong></dd>' +
+      '<dt>Bank</dt><dd ' + plain + '>' + AJ.esc(bk.nama) + '</dd>' +
+      '<dt>No. rekening</dt><dd>' + AJ.esc(bk.rek) + '</dd>' +
+      '<dt>Atas nama</dt><dd ' + plain + '>' + AJ.esc(bk.atas) + '</dd></dl>' +
+      ((cfg.bayar && cfg.bayar.catatan) ? '<p class="note">' + AJ.esc(cfg.bayar.catatan) + '</p>' : '') +
+      (sudah
+        ? '<p class="note"><strong>Terima kasih.</strong> Pembayaran Anda sedang diperiksa kurir. Kirim bukti transfer lewat WhatsApp bila belum.</p>'
+        : '<p class="note">Transfer sesuai jumlah di atas, lalu tekan Saya sudah transfer dan kirim bukti lewat WhatsApp. Pesanan diproses setelah pembayaran dikonfirmasi.</p><p class="note" id="t-pay-sisa"></p>') +
+      '<div class="actions">' + (sudah ? '' : '<button class="btn primary" type="button" id="t-lapor">Saya sudah transfer</button>') +
+      (cfg.kurirWa ? '<a class="btn' + (sudah ? ' primary' : '') + '" id="t-wabukti" target="_blank" rel="noopener" href="' + AJ.esc('https://wa.me/' + cfg.kurirWa + '?text=' + encodeURIComponent(pesan)) + '">Kirim bukti via WhatsApp</a>' : '') +
+      '<button class="btn" type="button" id="t-copyrek">Salin no. rekening</button></div>';
+    const lapor = async () => {
+      try { cur = await AJ.call('lapor', { id: o.id }); render(); }
+      catch (ex) { $('#t-err').textContent = ex.message; }
+    };
+    if (!sudah) {
+      $('#t-lapor').addEventListener('click', lapor);
+      const wa = $('#t-wabukti'); if (wa) wa.addEventListener('click', lapor); // membuka WhatsApp sekaligus menandai sudah transfer
+    }
+    $('#t-copyrek').addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText(String(bk.rek || '').replace(/\D/g, '')); AJ.toast('Nomor rekening disalin.'); }
+      catch (_e) { AJ.toast('Tekan lama pada nomor rekening lalu pilih Salin.'); }
+    });
+  }
+
+  function renderEta() {
+    const o = cur, el = $('#t-eta'); if (!o) return;
+    const sisa = $('#t-pay-sisa');
+    if (sisa && cfg.bayar && cfg.bayar.batasMenit > 0) {
+      const ms = o.dibuat + cfg.bayar.batasMenit * 60000 - Date.now();
+      sisa.textContent = ms > 0
+        ? 'Bayar dalam ' + Math.ceil(ms / 60000) + ' menit, atau pesanan dibatalkan otomatis. Jika sudah transfer, tekan Saya sudah transfer.'
+        : 'Batas waktu pembayaran habis. Tekan Saya sudah transfer bila Anda sudah membayar.';
+    }
+    if (o.status === 'batal' && AJ.bySystem(o)) {
+      el.hidden = false;
+      el.innerHTML = '<strong>Dibatalkan otomatis</strong><small>Pembayaran belum diterima dalam batas waktu. Jika Anda sudah transfer, hubungi kurir lewat WhatsApp dan sebutkan kode pesanan.</small>';
+      return;
+    }
+    if (['selesai', 'batal'].includes(o.status)) { el.hidden = true; return; }
+    el.hidden = false;
+    if (o.status === 'menunggu_bayar') { el.innerHTML = AJ.reported(o) ? '<strong>Pembayaran sedang diperiksa</strong><small>Halaman ini otomatis berubah setelah pembayaran dikonfirmasi kurir.</small>' : '<strong>Menunggu pembayaran</strong><small>Kirim bukti transfer lewat WhatsApp. Halaman ini otomatis berubah setelah pembayaran dikonfirmasi.</small>'; return; }
+    if (o.status === 'menunggu') { el.innerHTML = '<strong>Menunggu kurir menerima</strong><small>Halaman ini otomatis berubah saat kurir mengambil pesanan.</small>'; return; }
+    const l = o.lokasi;
+    if (!l) { el.innerHTML = '<strong><span class="live off"></span>Menunggu lokasi kurir</strong><small>Peta akan menampilkan kurir begitu GPS-nya aktif.</small>'; return; }
+    const target = o.status === 'mengantar' ? o.dropoff : o.pickup;
+    const km = AJ.haversine(l, target) * 1.3;
+    const menit = Math.max(1, Math.round((km / 25) * 60));
+    const fresh = Date.now() - l.at < 30000;
+    const dekat = km < 0.1;
+    const teks = dekat ? 'Kurir sudah dekat' : '\u00b1 ' + menit + ' menit lagi';
+    const jarak = dekat ? '' : AJ.km(km) + ' ke ' + (o.status === 'mengantar' ? 'tujuan' : 'lokasi jemput') + '. ';
+    el.innerHTML = '<strong><span class="live ' + (fresh ? '' : 'off') + '"></span>' + teks + '</strong>' +
+      '<small>' + jarak + 'Lokasi kurir diperbarui ' + AJ.ago(l.at) + '.</small>';
+  }
+  setInterval(renderEta, 1000);
+
+  function newOrder() {
+    clearTimeout(pollTimer); cur = null; AJ.store.del('aj_order');
+    $('#track').hidden = true; $('#order-form').hidden = false;
+    document.body.classList.remove('tracking'); window.scrollTo(0, 0);
+    trackLayer.clearLayers(); formLayer.addTo(map);
+    $('#submit').disabled = !st.quote;
+  }
+
+  let id = BOOT.id || AJ.store.get('aj_order');
+  if (/^AJ-[A-Z0-9]{8}$/.test(id)) {
+    AJ.call('getOrder', { id }).then(openTrack).catch(() => AJ.store.del('aj_order'));
+  }
+}
+
+/* ======================= kurir ======================= */
+let courierStarted = false, pin = AJ.store.get('aj_pin');
+const orders = new Map();
+let sel = null, kmap, klayer, selfMk, audio, listTimer;
+const gps = { id: null, watch: null, last: 0, sim: null, err: '' };
+const kcall = (a, d) => AJ.call(a, { ...(d || {}), pin });
+
+function startCourier() {
+  if (courierStarted) { if (kmap) setTimeout(() => kmap.invalidateSize(), 50); return; }
+  courierStarted = true;
+  $('#gate-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    try { audio = audio || new (window.AudioContext || window.webkitAudioContext)(); } catch (_e) { /* abaikan */ }
+    login($('#pin').value.trim());
+  });
+  if (pin) login(pin, true);
+  document.querySelectorAll('.tabs button').forEach((b) => b.addEventListener('click', () => {
+    document.querySelectorAll('.tabs button').forEach((x) => x.classList.toggle('on', x === b));
+    $('#k-pesanan').hidden = b.dataset.tab !== 'pesanan';
+    $('#k-setelan').hidden = b.dataset.tab !== 'setelan';
+    if (b.dataset.tab === 'setelan') buildSettings(); else if (kmap) setTimeout(() => kmap.invalidateSize(), 50);
+  }));
+}
+async function login(p, silent) {
+  try {
+    const r = await AJ.call('kPing', { pin: p });
+    pin = p; AJ.store.set('aj_pin', p);
+    $('#gate').hidden = true; $('#kapp').hidden = false;
+    $('#pin-warn').hidden = !r.pinBawaan;
+    runCourier();
+  } catch (e) {
+    if (silent) AJ.store.del('aj_pin'); else $('#gate-err').textContent = e.message;
+  }
+}
+function beep() {
+  try {
+    const a = audio; if (!a) return;
+    const o = a.createOscillator(), g = a.createGain();
+    o.frequency.value = 880; g.gain.value = .15; o.connect(g); g.connect(a.destination); o.start(); o.stop(a.currentTime + .25);
+  } catch (_e) { /* abaikan */ }
+}
+function runCourier() {
+  kmap = AJ.makeMap('kmap'); klayer = L.layerGroup().addTo(kmap);
+  refresh(true);
+  const loop = async () => { if (!document.hidden) await refresh(false); listTimer = setTimeout(loop, 6000); };
+  listTimer = setTimeout(loop, 6000);
+}
+async function refresh(first) {
+  try {
+    const list = await kcall('kList');
+    for (const o of list) {
+      const old = orders.get(o.id);
+      if (!first && !old && (o.status === 'menunggu' || o.status === 'menunggu_bayar')) { AJ.toast('Pesanan baru: ' + o.id + (o.status === 'menunggu_bayar' ? ' (menunggu pembayaran)' : '')); beep(); }
+      if (!first && old && !AJ.reported(old) && AJ.reported(o)) { AJ.toast('Sudah transfer: ' + o.id + '. Cek mutasi rekening.'); beep(); }
+      orders.set(o.id, { ...(old || {}), ...o });
+    }
+    renderList(); if (sel) renderDetail(false);
+  } catch (e) { if (/PIN/.test(e.message)) { AJ.store.del('aj_pin'); location.reload(); } }
+}
+function renderList() {
+  const all = [...orders.values()].sort((a, b) => b.dibuat - a.dibuat);
+  const cek = all.filter((o) => AJ.reported(o));
+  const aktif = all.filter((o) => !['selesai', 'batal'].includes(o.status) && !AJ.reported(o));
+  const lain = all.filter((o) => ['selesai', 'batal'].includes(o.status)).slice(0, 8);
+  const el = $('#list');
+  if (!all.length) { el.innerHTML = '<p class="note">Belum ada pesanan. Daftar ini diperbarui otomatis tiap beberapa detik.</p>'; return; }
+  el.innerHTML = '';
+  const add = (title, arr) => {
+    if (!arr.length) return;
+    const t = document.createElement('div'); t.className = 'sec-title'; t.textContent = title; el.appendChild(t);
+    for (const o of arr) {
+      const b = document.createElement('button');
+      b.className = 'order' + (o.id === sel ? ' sel' : ''); b.type = 'button';
+      b.innerHTML = ('<div class="l1"><span class="code">' + (o.id) + '</span><span class="pill st-' + (AJ.stKey(o)) + '">' + (AJ.shortOf(o)) + '</span></div>\n        <div class="l2">' + (AJ.esc(o.pickup.alamat)) + ' \u2192 ' + (AJ.esc(o.dropoff.alamat)) + '</div>\n        <div class="l3">' + (AJ.km(o.km)) + ' \u00b7 ' + (AJ.rupiah(o.harga.total)) + '</div>');
+      b.addEventListener('click', () => select(o.id));
+      el.appendChild(b);
+    }
+  };
+  add('Perlu dicek: sudah transfer', cek); add('Aktif', aktif); add('Selesai', lain);
+}
+async function select(id) {
+  sel = id; renderList();
+  $('#k-pesanan').classList.add('show-detail'); $('#kback-code').textContent = id; window.scrollTo(0, 0);
+  const o = orders.get(id);
+  if (o && !o.rute) { try { orders.set(id, { ...o, ...(await AJ.call('getOrder', { id })) }); } catch (_e) { /* tetap tampil tanpa rute */ } }
+  renderDetail(true);
+}
+const NEXT = { menunggu_bayar: ['Uang sudah masuk, terima pesanan', 'diterima'], menunggu: ['Terima pesanan', 'diterima'], diterima: ['Berangkat jemput', 'menuju_jemput'],
+  menuju_jemput: ['Barang sudah dijemput', 'mengantar'], mengantar: ['Selesai diantar', 'selesai'] };
+function renderDetail(fit) {
+  const o = orders.get(sel), el = $('#detail');
+  if (!o) { el.innerHTML = '<p class="note">Pilih pesanan untuk melihat detail dan petanya.</p>'; return; }
+  const aktif = !['selesai', 'batal'].includes(o.status);
+  const target = ['menunggu_bayar', 'menunggu', 'diterima', 'menuju_jemput'].includes(o.status) ? o.pickup : o.dropoff;
+  const wa = o.hp.replace(/\D/g, '').replace(/^0/, '62');
+  const plain = 'style="font-family:var(--f-body)"';
+  el.innerHTML = ('\n    <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap">\n      <span class="code" style="font-size:1.2rem;font-weight:600">' + (o.id) + '</span>\n      <span class="pill st-' + (AJ.stKey(o)) + '">' + (AJ.statusOf(o)) + '</span>\n    </div>\n    <div class="stops">\n      <div class="stop"><span class="dot">A</span><div><div class="sec-title">Jemput</div>' + (AJ.esc(o.pickup.alamat)) + '</div></div>\n      <div class="stop"><span class="dot b">B</span><div><div class="sec-title">Antar ke</div>' + (AJ.esc(o.dropoff.alamat)) + '</div></div>\n    </div>\n    <div class="card"><dl class="rows">\n      <dt>Barang</dt><dd ' + (plain) + '>' + (AJ.esc(o.barang)) + ' (' + (AJ.esc((cfg.tarif.ukuran[o.ukuran] || {}).label || o.ukuran)) + ')</dd>\n      ' + (o.catatan ? ('<dt>Catatan</dt><dd ' + (plain) + '>' + (AJ.esc(o.catatan)) + '</dd>') : '') + '\n      <dt>Pemesan</dt><dd ' + (plain) + '>' + (AJ.esc(o.nama)) + '</dd>\n      <dt>Jarak</dt><dd>' + (AJ.km(o.km)) + '</dd>\n      <dt>Pembayaran</dt><dd ' + (plain) + '>' + (AJ.esc(AJ.payLabel(o))) + '</dd>\n      <dt>' + (AJ.pay(o).metode === 'tunai' ? 'Tagih tunai' : 'Total') + '</dt><dd><strong>' + (AJ.rupiah(o.harga.total)) + '</strong></dd>\n    </dl></div>\n    ' + (o.status === 'menunggu_bayar' ? '<div class="warn">' + (AJ.reported(o) ? '<strong>Pelanggan melapor sudah transfer.</strong> ' : 'Pelanggan memilih transfer. ') + 'Cek mutasi rekening: jumlah <strong>' + AJ.rupiah(o.harga.total) + '</strong> dan kode pesanan harus cocok. Jangan hanya percaya tangkapan layar. Setelah uang masuk, ketuk tombol di bawah.</div>' : '') + '<div class="actions">\n      <a class="btn" href="https://wa.me/' + (wa) + '" target="_blank" rel="noopener">WhatsApp pemesan</a>\n      ' + (aktif ? ('<a class="btn" href="https://www.google.com/maps/dir/?api=1&destination=' + (target.lat) + ',' + (target.lng) + '&travelmode=two-wheeler" target="_blank" rel="noopener">Buka navigasi</a>') : '') + '\n    </div>\n    <p class="note">Nomor pemesan: <span class="code">' + (AJ.esc(o.hp)) + '</span></p>\n    ' + (aktif ? '<div class="card" id="gps-box"></div>' : '') + '\n    ' + (aktif && NEXT[o.status] ? ('<div class="stickybar"><button class="btn primary" id="btn-next">' + (NEXT[o.status][0]) + '</button>\n      ' + (o.status === 'menunggu_bayar' || o.status === 'menunggu' || o.status === 'diterima' ? '<button class="btn danger" id="btn-batal">Batalkan</button>' : '') + '</div>') : '') + '\n    ' + (o.status === 'batal' && AJ.bySystem(o) && AJ.pay(o).status !== 'lunas' ? '<div class="warn">Pesanan ini dibatalkan otomatis karena pembayaran belum diterima. Jika ternyata uangnya masuk (cek mutasi), Anda bisa mengaktifkannya kembali.</div><div class="stickybar"><button class="btn primary" id="btn-aktif">Uang ternyata masuk, aktifkan pesanan</button></div>' : '') + '<p class="err-msg" id="d-err" role="alert"></p>');
+  const nx = $('#btn-next');
+  if (nx) nx.addEventListener('click', async () => {
+    nx.disabled = true;
+    try {
+      if (o.status === 'menunggu_bayar' && nx.dataset.sure !== '1') { nx.dataset.sure = '1'; nx.textContent = 'Ketuk lagi: uang benar-benar sudah masuk'; nx.disabled = false; return; }
+      const next = NEXT[o.status][1];
+      const upd = o.status === 'menunggu_bayar' ? await kcall('kBayar', { id: o.id }) : await kcall('kStatus', { id: o.id, status: next });
+      orders.set(upd.id, { ...o, ...upd });
+      if (next === 'menuju_jemput' || next === 'mengantar') startGps(o.id);
+      if (next === 'selesai') stopGps();
+      renderList(); renderDetail(false);
+    } catch (e) { $('#d-err').textContent = e.message; nx.disabled = false; }
+  });
+  const bt = $('#btn-batal');
+  if (bt) bt.addEventListener('click', async () => {
+    if (bt.dataset.sure !== '1') { bt.dataset.sure = '1'; bt.textContent = 'Ketuk lagi untuk membatalkan'; return; }
+    try { const upd = await kcall('kStatus', { id: o.id, status: 'batal' }); orders.set(upd.id, { ...o, ...upd }); stopGps(); renderList(); renderDetail(false); }
+    catch (e) { $('#d-err').textContent = e.message; }
+  });
+  const ak = $('#btn-aktif');
+  if (ak) ak.addEventListener('click', async () => {
+    if (ak.dataset.sure !== '1') { ak.dataset.sure = '1'; ak.textContent = 'Ketuk lagi: uang benar-benar sudah masuk'; return; }
+    ak.disabled = true;
+    try { const upd = await kcall('kBayar', { id: o.id }); orders.set(upd.id, { ...o, ...upd }); renderList(); renderDetail(false); }
+    catch (e) { $('#d-err').textContent = e.message; ak.disabled = false; }
+  });
+  renderGpsBox(); drawMap(o, fit);
+}
+function drawMap(o, fit) {
+  klayer.clearLayers(); selfMk = null;
+  const path = AJ.pathOf(o);
+  L.polyline(path, { color: '#fff', weight: 9, opacity: .9 }).addTo(klayer);
+  L.polyline(path, { color: AJ.brand(), weight: 5 }).addTo(klayer);
+  L.marker([o.pickup.lat, o.pickup.lng], { icon: AJ.pinIcon('A', 'pickup') }).addTo(klayer);
+  L.marker([o.dropoff.lat, o.dropoff.lng], { icon: AJ.pinIcon('B', 'dropoff') }).addTo(klayer);
+  if (gps.id === o.id && gps.pos) moveSelf(gps.pos);
+  if (fit) kmap.fitBounds(path, { padding: [50, 50] });
+}
+function moveSelf(l) {
+  gps.pos = l;
+  if (!selfMk) selfMk = L.marker([l.lat, l.lng], { icon: AJ.kurirIcon(), zIndexOffset: 1000 }).addTo(klayer);
+  else selfMk.setLatLng([l.lat, l.lng]);
+}
+function renderGpsBox() {
+  const box = $('#gps-box'); if (!box) return;
+  const on = gps.id === sel;
+  box.innerHTML = ('\n    <div style="display:flex;align-items:center;gap:8px"><span class="live ' + (on ? '' : 'off') + '"></span>\n      <strong>' + (on ? (gps.sim ? 'Mode simulasi aktif' : 'Lokasi Anda dibagikan ke pelanggan') : 'Lokasi belum dibagikan') + '</strong></div>\n    <p class="note">' + (AJ.esc(gps.err) || (on ? 'Biarkan halaman ini terbuka selama mengantar.' : 'Nyalakan agar pelanggan bisa melihat posisi Anda di peta.')) + '</p>\n    <div class="actions">\n      <button class="btn" id="gps-toggle">' + (on && !gps.sim ? 'Matikan GPS' : 'Bagikan lokasi GPS') + '</button>\n      <button class="btn" id="gps-sim">' + (gps.sim ? 'Hentikan simulasi' : 'Simulasi perjalanan (uji coba)') + '</button>\n    </div>');
+  $('#gps-toggle').addEventListener('click', () => { if (on && !gps.sim) stopGps(); else startGps(sel); });
+  $('#gps-sim').addEventListener('click', () => { if (gps.sim) stopGps(); else startSim(sel); });
+}
+async function sendLoc(id, l) {
+  moveSelf(l);
+  const now = Date.now();
+  if (now - gps.last < 3000 || gps.busy) return;
+  gps.last = now; gps.busy = true;
+  try { await kcall('kLoc', { id, lat: l.lat, lng: l.lng }); if (gps.err) { gps.err = ''; renderGpsBox(); } }
+  catch (e) { gps.err = e.message; renderGpsBox(); }
+  gps.busy = false;
+}
+function startGps(id) {
+  stopGps(true);
+  if (!navigator.geolocation) { gps.err = 'Perangkat ini tidak mendukung GPS.'; renderGpsBox(); return; }
+  gps.id = id; gps.err = '';
+  gps.watch = navigator.geolocation.watchPosition(
+    (p) => sendLoc(id, { lat: p.coords.latitude, lng: p.coords.longitude }),
+    (e) => { gps.err = e.code === 1 ? 'Izin lokasi ditolak atau diblokir. Izinkan lokasi untuk halaman ini di browser.' : 'GPS belum mendapat sinyal. Pindah ke tempat terbuka.'; renderGpsBox(); },
+    { enableHighAccuracy: true, maximumAge: 2000, timeout: 20000 });
+  try { navigator.wakeLock && navigator.wakeLock.request('screen').catch(() => {}); } catch (_e) { /* abaikan */ }
+  renderGpsBox();
+}
+function startSim(id) {
+  stopGps(true);
+  const o = orders.get(id); if (!o) return;
+  gps.id = id; gps.err = '';
+  let path;
+  if (o.status === 'mengantar') path = AJ.pathOf(o);
+  else {
+    const s = { lat: o.pickup.lat + 0.008, lng: o.pickup.lng - 0.006 };
+    path = Array.from({ length: 41 }, (_, i) => [s.lat + (o.pickup.lat - s.lat) * (i / 40), s.lng + (o.pickup.lng - s.lng) * (i / 40)]);
+  }
+  let i = 0;
+  gps.sim = setInterval(() => {
+    if (i >= path.length) { stopGps(); return; }
+    gps.last = 0; sendLoc(id, { lat: path[i][0], lng: path[i][1] }); i++;
+  }, 3200);
+  renderGpsBox();
+}
+function stopGps(quiet) {
+  if (gps.watch != null) navigator.geolocation.clearWatch(gps.watch);
+  if (gps.sim) clearInterval(gps.sim);
+  gps.watch = null; gps.sim = null; gps.id = null; gps.pos = null;
+  if (!quiet) renderGpsBox();
+}
+
+/* ---- pengaturan ---- */
+let setBuilt = false;
+let logoDraft; // undefined = tidak diubah, '' = hapus, teks data: = logo baru
+function flat(c) {
+  const f = { nama: c.nama, kurirNama: c.kurirNama, kurirWa: c.kurirWa, pusat_lat: c.pusat.lat, pusat_lng: c.pusat.lng, pusat_zoom: c.pusat.zoom, peta_gaya: c.pusat.gaya,
+    dasar: c.tarif.dasar, kmTermasuk: c.tarif.kmTermasuk, perKm: c.tarif.perKm, minimum: c.tarif.minimum, pembulatan: c.tarif.pembulatan, maksJarakKm: c.tarif.maksJarakKm, logo_nama: c.logoNama === false ? '0' : '1',
+    bayar_tunai: c.bayar && c.bayar.tunai === false ? '0' : '1', bayar_transfer: c.bayar && c.bayar.transfer ? '1' : '0',
+    bank_nama: c.bayar ? c.bayar.bank.nama : '', bank_rek: c.bayar ? c.bayar.bank.rek : '', bank_atas: c.bayar ? c.bayar.bank.atas : '', bayar_catatan: c.bayar ? c.bayar.catatan : '', bayar_batas_menit: c.bayar ? c.bayar.batasMenit : 60, warna: (c.warna || AJ.WARNA).toLowerCase() };
+  for (const [k, u] of Object.entries(c.tarif.ukuran)) { f[('ukuran_' + (k) + '_label')] = u.label; f[('ukuran_' + (k) + '_ket')] = u.ket; f[('ukuran_' + (k) + '_tambahan')] = u.tambahan; }
+  return f;
+}
+function buildSettings() {
+  const form = $('#set-form');
+  if (!setBuilt) {
+    setBuilt = true;
+    $('#size-rows').innerHTML = Object.keys(cfg.tarif.ukuran).map((k) => ('\n      <div class="sizerow">\n        <div class="field"><label class="lbl" for="s-ukuran_' + (k) + '_label">Ukuran ' + (k) + '</label><input class="in" id="s-ukuran_' + (k) + '_label" name="ukuran_' + (k) + '_label" maxlength="20"></div>\n        <div class="field"><label class="lbl" for="s-ukuran_' + (k) + '_ket">Keterangan</label><input class="in" id="s-ukuran_' + (k) + '_ket" name="ukuran_' + (k) + '_ket" maxlength="60"></div>\n        <div class="field"><label class="lbl" for="s-ukuran_' + (k) + '_tambahan">Tambahan (Rp)</label><input class="in" id="s-ukuran_' + (k) + '_tambahan" name="ukuran_' + (k) + '_tambahan" inputmode="decimal"></div>\n      </div>')).join('');
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const err = $('#set-err'); err.textContent = '';
+      const settings = {};
+      new FormData(form).forEach((v, k) => { if (k !== 'pinBaru') settings[k] = v; });
+      settings.bayar_tunai = $('#s-bayar_tunai').checked ? '1' : '0';
+      settings.bayar_transfer = $('#s-bayar_transfer').checked ? '1' : '0';
+      const btn = $('#set-save'); btn.disabled = true;
+      try {
+        const pb = $('#s-pin').value;
+        const payload = { settings, pinBaru: pb };
+        if (logoDraft !== undefined) payload.logo = logoDraft;
+        cfg = await kcall('kSave', payload);
+        if (pb) { pin = pb; AJ.store.set('aj_pin', pb); $('#pin-warn').hidden = true; }
+        $('#s-pin').value = '';
+        applyBrand(); fillSettings();
+        AJ.toast('Pengaturan tersimpan.');
+      } catch (ex) { err.textContent = ex.message; }
+      btn.disabled = false;
+    });
+    $('#swatches').innerHTML = AJ.PRESET.map((p) => '<button type="button" class="sw" data-c="' + p[0] + '" style="background:' + p[0] + '" aria-label="' + p[1] + '" title="' + p[1] + '"></button>').join('');
+    const pakaiWarna = (v) => { $('#s-warna').value = v.toLowerCase(); AJ.applyTheme(v); syncWarna(); };
+    $('#swatches').addEventListener('click', (e) => { const b = e.target.closest('.sw'); if (b) pakaiWarna(b.dataset.c); });
+    $('#s-warna').addEventListener('input', (e) => pakaiWarna(e.target.value));
+    $('#warna-reset').addEventListener('click', () => pakaiWarna(AJ.WARNA));
+    $('#s-logo-pick').addEventListener('click', () => $('#s-logo-file').click());
+    $('#s-logo-file').addEventListener('change', async (e) => {
+      const f = e.target.files && e.target.files[0]; e.target.value = '';
+      if (!f) return;
+      const er = $('#set-err'); er.textContent = '';
+      try { logoDraft = await AJ.logoFromFile(f); renderLogoPrev(); }
+      catch (ex) { er.textContent = ex.message; }
+    });
+    $('#s-logo-del').addEventListener('click', () => { logoDraft = ''; renderLogoPrev(); });
+    $('#s-here').addEventListener('click', () => {
+      if (!navigator.geolocation) return AJ.toast('Perangkat ini tidak mendukung GPS.');
+      navigator.geolocation.getCurrentPosition((p) => {
+        $('#s-pusat_lat').value = p.coords.latitude.toFixed(5); $('#s-pusat_lng').value = p.coords.longitude.toFixed(5);
+      }, () => AJ.toast('Lokasi tidak bisa dibaca. Isi lintang dan bujur secara manual.'), { timeout: 10000 });
+    });
+  }
+  fillSettings();
+}
+function fillSettings() {
+  const f = flat(cfg);
+  for (const [k, v] of Object.entries(f)) {
+    const el = document.getElementById('s-' + k);
+    if (!el) continue;
+    if (el.type === 'checkbox') el.checked = v === '1'; else el.value = v;
+  }
+  logoDraft = undefined; renderLogoPrev();
+  AJ.applyTheme(cfg.warna); syncWarna();
+}
+function syncWarna() {
+  const v = ($('#s-warna').value || AJ.WARNA).toUpperCase();
+  $('#warna-hex').textContent = v;
+  document.querySelectorAll('#swatches .sw').forEach((b) => b.classList.toggle('on', b.dataset.c === v));
+}
+function renderLogoPrev() {
+  const cur = logoDraft === undefined ? (cfg.logo || '') : logoDraft;
+  const img = $('#logo-prev');
+  if (cur) { img.src = cur; img.hidden = false; $('#logo-empty').hidden = true; }
+  else { img.removeAttribute('src'); img.hidden = true; $('#logo-empty').hidden = false; }
+  $('#s-logo-del').hidden = !cur;
+  $('#logo-note').textContent = logoDraft === undefined ? '' :
+    (logoDraft ? 'Logo baru dipilih. Tekan Simpan pengaturan untuk menerapkannya.' : 'Logo akan dihapus setelah Anda menekan Simpan pengaturan.');
+}
+function applyBrand() {
+  AJ.applyTheme(cfg.warna);
+  $('#brand').textContent = cfg.nama;
+  const li = $('#brand-logo'), ico = $('#brand-ico'), nm = $('#brand');
+  // setAttribute dipakai karena properti .hidden tidak berlaku untuk elemen SVG
+  const tampil = (el, ya) => {
+    if (ya) { el.removeAttribute('hidden'); el.style.display = ''; }
+    else { el.setAttribute('hidden', ''); el.style.display = 'none'; } // style inline agar berlaku apa pun CSS-nya
+  };
+  const adaLogo = !!cfg.logo;
+  if (adaLogo) { li.src = cfg.logo; li.alt = cfg.nama; } else li.removeAttribute('src');
+  tampil(li, adaLogo);      // logo
+  tampil(ico, !adaLogo);    // ikon bawaan hanya bila belum ada logo
+  tampil(nm, !adaLogo);     // nama aplikasi hanya bila belum ada logo
+  try { document.title = cfg.nama; } catch (_e) { /* abaikan */ }
+}
+
+/* ======================= pengalihan halaman ======================= */
+function show(v) {
+  $('#v-pel').hidden = v !== 'pelanggan'; $('#v-kur').hidden = v !== 'kurir';
+  document.body.classList.toggle('courier', v === 'kurir');
+  // Tombol hanya ada di halaman kurir. Masuk ke halaman kurir: ketuk logo 5 kali (atau alamat ?p=kurir).
+  $('#nav-sw').textContent = 'Halaman pelanggan';
+  $('#nav-sw').hidden = v !== 'kurir';
+  if (v === 'pelanggan') startCustomer(); else startCourier();
+}
+$('#btn-back').addEventListener('click', () => { $('#k-pesanan').classList.remove('show-detail'); window.scrollTo(0, 0); });
+let page = BOOT.page;
+$('#nav-sw').addEventListener('click', () => { page = 'pelanggan'; show(page); });
+let ketuk = 0, ketukTimer = null;
+$('#brand-link').addEventListener('click', (e) => {
+  e.preventDefault();
+  clearTimeout(ketukTimer);
+  ketuk++;
+  if (ketuk >= 5) { ketuk = 0; page = 'kurir'; show(page); return; } // 5 ketukan beruntun membuka halaman kurir
+  ketukTimer = setTimeout(() => { ketuk = 0; }, 2500);             // jeda lebih dari 2,5 detik mengulang hitungan
+  if (page !== 'pelanggan') { page = 'pelanggan'; show(page); }
+});
+applyBrand();
+show(page);
+};
+</script>
+<script>
+/* ===== PENGATURAN: isi dengan alamat Web App Apps Script Anda (yang berakhiran /exec) ===== */
+window.API_URL = 'https://script.google.com/macros/s/AKfycbzxT3W5DbPt02zjtsNzZ0FDuWTh6APRRI1mvDvVIzg6pTPsIDZLw5-cWV5BDETdm2elcw/exec';
+/* ========================================================================================= */
+
+window.apiCall = function (action, data) {
+  return new Promise(function (ok, no) {
+    var url = window.API_URL;
+    if (!url || /GANTI/.test(url)) return no(new Error('Alamat server belum diisi. Ubah baris API_URL di index.html.'));
+    var ctl = ('AbortController' in window) ? new AbortController() : null;
+    var timer = setTimeout(function () { if (ctl) ctl.abort(); }, 40000);
+    // Tanpa header khusus (teks biasa) agar termasuk "simple request" dan lolos aturan CORS.
+    fetch(url, { method: 'POST', body: JSON.stringify({ action: action, data: data || {} }), redirect: 'follow', signal: ctl ? ctl.signal : undefined })
+      .then(function (r) { return r.text(); })
+      .then(function (txt) {
+        clearTimeout(timer);
+        var r;
+        try { r = JSON.parse(txt); } catch (_e) { return no(new Error('Server tidak membalas dengan benar. Pastikan Web App di-deploy dengan akses Anyone dan memakai versi terbaru.')); }
+        if (r && r.error) no(new Error(r.error)); else ok(r ? r.data : null);
+      })
+      .catch(function () { clearTimeout(timer); no(new Error('Tidak bisa terhubung ke server. Periksa koneksi internet lalu coba lagi.')); });
+  });
+};
+
+(function () {
+  var q = new URLSearchParams(location.search);
+  var box = document.getElementById('boot-load');
+  function gagal(msg) {
+    box.innerHTML = '<p></p><button class="btn primary" type="button">Coba lagi</button>';
+    box.querySelector('p').textContent = msg;
+    box.querySelector('button').addEventListener('click', function () { location.reload(); });
+  }
+  window.apiCall('boot', {}).then(function (cfg) {
+    var id = q.get('id') || '';
+    window.BOOT = { cfg: cfg, page: q.get('p') === 'kurir' ? 'kurir' : 'pelanggan', id: /^AJ-[A-Z0-9]{8}$/.test(id) ? id : '', url: location.origin + location.pathname };
+    box.remove();
+    window.startApp();
+  }).catch(function (e) { gagal(e.message); });
+})();
+</script>
 </body>
 </html>
