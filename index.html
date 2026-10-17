@@ -296,9 +296,13 @@ button, a, .opt, .chip { -webkit-tap-highlight-color: transparent; }
   <section class="panel" aria-label="Pesan antar jemput">
     <form id="order-form" novalidate style="display:flex;flex-direction:column;gap:18px">
       <div>
-        <h1>Antar jemput barang</h1>
+        <h1 id="h-judul">Antar jemput barang</h1>
         <p class="sub">Isi titik jemput dan tujuan. Ongkos dihitung dari jarak rute sebenarnya.</p>
       </div>
+      <fieldset class="field" id="f-layanan" style="border:0;padding:0;margin:0;min-width:0" hidden>
+        <legend class="lbl" style="padding:0;margin-bottom:6px">Jenis layanan</legend>
+        <div class="sizes pay" id="layanan-opts"></div>
+      </fieldset>
       <div class="field" id="f-pickup">
         <label class="lbl" for="in-pickup">Jemput dari</label>
         <div class="addr"><span class="dot">A</span><input class="in" id="in-pickup" type="text" placeholder="Cari alamat atau nama tempat" autocomplete="off"></div>
@@ -314,11 +318,11 @@ button, a, .opt, .chip { -webkit-tap-highlight-color: transparent; }
         <ul class="sugg" hidden></ul>
         <div class="addr-actions"><button type="button" class="chip" data-act="map">Pilih di peta</button></div>
       </div>
-      <fieldset class="field" style="border:0;padding:0;margin:0;min-width:0">
+      <fieldset class="field" id="f-ukuran" style="border:0;padding:0;margin:0;min-width:0">
         <legend class="lbl" style="padding:0;margin-bottom:6px">Ukuran barang</legend>
         <div class="sizes" id="ukuran"></div>
       </fieldset>
-      <div class="field">
+      <div class="field" id="f-barang">
         <label class="lbl" for="in-barang">Barang apa yang diantar</label>
         <input class="in" id="in-barang" type="text" maxlength="200" placeholder="Contoh: dokumen, 2 kardus pesanan">
       </div>
@@ -383,7 +387,7 @@ button, a, .opt, .chip { -webkit-tap-highlight-color: transparent; }
     </div>
     <main class="kshell" id="k-pesanan">
       <aside class="klist" aria-label="Daftar pesanan">
-        <div id="pin-warn" class="warn" hidden>PIN masih bawaan. Ganti di tab Pengaturan agar pesanan Anda aman.</div>
+        <div id="pin-warn" class="warn" hidden>PIN masih bawaan (1234). Ganti di tab Pengaturan agar pesanan Anda aman.</div>
         <h2>Pesanan</h2>
         <div id="list" style="display:flex;flex-direction:column;gap:10px"></div>
       </aside>
@@ -444,7 +448,19 @@ button, a, .opt, .chip { -webkit-tap-highlight-color: transparent; }
           <p class="note"><strong>Rekomendasi ukuran:</strong> PNG berlatar transparan (atau WebP/JPG). Logo persegi 512 x 512 px, atau logo lebar dengan rasio maksimal 3:1 (contoh 900 x 300 px). Aplikasi mengecilkannya otomatis ke maksimal 360 x 160 px dan sekitar 33 KB. Di header tampil setinggi 36 px, jadi hindari tulisan yang terlalu kecil dan pakai warna yang terbaca di latar terang maupun gelap. SVG tidak didukung.</p>
         </div>
         <div class="setgroup">
-          <h2>Tarif</h2>
+          <h2>Layanan</h2>
+          <label class="chk"><input type="checkbox" id="s-layanan_barang"> Kirim barang</label>
+          <label class="chk"><input type="checkbox" id="s-layanan_ojek"> Ojek (antar orang)</label>
+          <p class="note">Tarif ojek di bawah ini terpisah dari tarif kirim barang. Layanan ojek tidak memakai ukuran barang. Pembulatan dan jarak maksimum memakai pengaturan yang sama dengan kirim barang.</p>
+          <div class="setgrid">
+            <div class="field"><label class="lbl" for="s-ojek_dasar">Ojek: tarif dasar (Rp)</label><input class="in" id="s-ojek_dasar" name="ojek_dasar" inputmode="decimal"></div>
+            <div class="field"><label class="lbl" for="s-ojek_kmTermasuk">Ojek: km termasuk tarif dasar</label><input class="in" id="s-ojek_kmTermasuk" name="ojek_kmTermasuk" inputmode="decimal"></div>
+            <div class="field"><label class="lbl" for="s-ojek_perKm">Ojek: tarif per km (Rp)</label><input class="in" id="s-ojek_perKm" name="ojek_perKm" inputmode="decimal"></div>
+            <div class="field"><label class="lbl" for="s-ojek_minimum">Ojek: ongkos minimum (Rp)</label><input class="in" id="s-ojek_minimum" name="ojek_minimum" inputmode="decimal"></div>
+          </div>
+        </div>
+        <div class="setgroup">
+          <h2>Tarif kirim barang</h2>
           <div class="setgrid">
             <div class="field"><label class="lbl" for="s-dasar">Tarif dasar (Rp)</label><input class="in" id="s-dasar" name="dasar" inputmode="decimal"></div>
             <div class="field"><label class="lbl" for="s-kmTermasuk">Km termasuk tarif dasar</label><input class="in" id="s-kmTermasuk" name="kmTermasuk" inputmode="decimal"></div>
@@ -536,6 +552,9 @@ AJ.haversine = (a, b) => {
 };
 AJ.STATUS = { menunggu_bayar: 'Menunggu pembayaran', menunggu: 'Mencari kurir', diterima: 'Pesanan diterima', menuju_jemput: 'Kurir menuju lokasi jemput',
   mengantar: 'Barang sedang diantar', selesai: 'Barang sudah sampai', batal: 'Pesanan dibatalkan' };
+AJ.STATUS_OJEK = { menunggu_bayar: 'Menunggu pembayaran', menunggu: 'Mencari driver', diterima: 'Pesanan diterima', menuju_jemput: 'Driver menuju lokasi jemput',
+  mengantar: 'Dalam perjalanan', selesai: 'Sudah sampai tujuan', batal: 'Pesanan dibatalkan' };
+AJ.isOjek = (o) => o.layanan === 'ojek';
 AJ.SHORT = { menunggu_bayar: 'Bayar', menunggu: 'Baru', diterima: 'Diterima', menuju_jemput: 'Jemput', mengantar: 'Antar', selesai: 'Selesai', batal: 'Batal' };
 AJ.ago = (ms) => {
   const s = Math.max(0, Math.round((Date.now() - ms) / 1000));
@@ -625,7 +644,7 @@ AJ.brand = () => (getComputedStyle(document.documentElement).getPropertyValue('-
 AJ.pay = (o) => o.bayar || { metode: 'tunai', status: 'tunai' };
 AJ.payLabel = (o) => {
   const p = AJ.pay(o);
-  if (p.metode !== 'transfer') return 'Tunai ke kurir saat barang sampai';
+  if (p.metode !== 'transfer') return AJ.isOjek(o) ? 'Tunai ke driver saat sampai tujuan' : 'Tunai ke kurir saat barang sampai';
   if (p.status === 'lunas') return 'Transfer (sudah dikonfirmasi)';
   if (o.status === 'batal') return 'Transfer (dibatalkan)';
   return p.status === 'dilaporkan' ? 'Transfer (pelanggan melapor sudah transfer, cek mutasi)' : 'Transfer (menunggu konfirmasi)';
@@ -633,7 +652,7 @@ AJ.payLabel = (o) => {
 AJ.reported = (o) => o.status === 'menunggu_bayar' && AJ.pay(o).status === 'dilaporkan';
 AJ.stKey = (o) => (AJ.reported(o) ? 'dilaporkan' : o.status);
 AJ.shortOf = (o) => (AJ.reported(o) ? 'Cek bayar' : AJ.SHORT[o.status]);
-AJ.statusOf = (o) => (AJ.reported(o) ? 'Pembayaran sedang diperiksa' : AJ.STATUS[o.status]);
+AJ.statusOf = (o) => (AJ.reported(o) ? 'Pembayaran sedang diperiksa' : (AJ.isOjek(o) ? AJ.STATUS_OJEK : AJ.STATUS)[o.status]);
 AJ.bySystem = (o) => (o.riwayat || []).some((r) => r.oleh === 'sistem');
 AJ.canCancel = (o) => ['menunggu_bayar', 'menunggu', 'diterima'].includes(o.status) && AJ.pay(o).status !== 'lunas';
 
@@ -782,6 +801,20 @@ function startCustomer() {
   $('#bayar-opts').addEventListener('change', (e) => { st.metode = e.target.value; payNote(); });
   payNote();
 
+  const LAY = [['barang', 'Kirim barang', 'Antar paket atau barang'], ['ojek', 'Ojek', 'Antar orang']];
+  const layOn = LAY.filter((l) => (cfg.layanan ? cfg.layanan[l[0]] : l[0] === 'barang'));
+  st.layanan = layOn.length ? layOn[0][0] : 'barang';
+  $('#layanan-opts').innerHTML = layOn.map((l) => '<label class="opt"><input type="radio" name="layanan" value="' + l[0] + '"' + (l[0] === st.layanan ? ' checked' : '') +
+    '><span class="opt-t">' + l[1] + '</span><span class="opt-s">' + l[2] + '</span></label>').join('');
+  $('#f-layanan').hidden = layOn.length < 2;
+  const applyLayanan = () => {
+    const oj = st.layanan === 'ojek';
+    $('#f-ukuran').hidden = oj; $('#f-barang').hidden = oj;
+    $('#h-judul').textContent = oj ? 'Ojek: antar orang' : 'Antar jemput barang';
+  };
+  $('#layanan-opts').addEventListener('change', (e) => { st.layanan = e.target.value; applyLayanan(); requote(); });
+  applyLayanan();
+
   const fPick = AJ.addressField($('#f-pickup'), { map, layer: formLayer, kind: 'pickup', onChange: onPoint });
   const fDrop = AJ.addressField($('#f-dropoff'), { map, layer: formLayer, kind: 'dropoff', onChange: onPoint });
   function onPoint(v) { if (v) fitForm(); requote(); }
@@ -801,7 +834,7 @@ function startCustomer() {
     if (!a || !b) { st.quote = null; drawRoute(null); renderPrice(null); return; }
     const my = ++seq; renderPrice('loading');
     try {
-      const q = await AJ.call('quote', { pickup: a, dropoff: b, ukuran: st.ukuran });
+      const q = await AJ.call('quote', { pickup: a, dropoff: b, ukuran: st.ukuran, layanan: st.layanan });
       if (my !== seq) return;
       st.quote = q; renderPrice(q); drawRoute(AJ.pathOf(q));
     } catch (e) {
@@ -829,7 +862,7 @@ function startCustomer() {
     if (!st.quote) return;
     $('#submit').disabled = true;
     try {
-      const o = await AJ.call('order', { pickup: fPick.get(), dropoff: fDrop.get(), ukuran: st.ukuran, metode: st.metode,
+      const o = await AJ.call('order', { pickup: fPick.get(), dropoff: fDrop.get(), ukuran: st.ukuran, layanan: st.layanan, metode: st.metode,
         barang: $('#in-barang').value, catatan: $('#in-catatan').value, nama: $('#in-nama').value, hp: $('#in-hp').value });
       AJ.store.set('aj_order', o.id);
       openTrack(o);
@@ -879,6 +912,7 @@ function startCustomer() {
   }
   document.addEventListener('visibilitychange', () => { if (!document.hidden && cur) schedule(300); });
 
+  const STEPS_OJEK = [['diterima', 'Pesanan diterima'], ['menuju_jemput', 'Driver menuju lokasi jemput'], ['mengantar', 'Dalam perjalanan'], ['selesai', 'Sudah sampai tujuan']];
   const STEPS = [['diterima', 'Pesanan diterima kurir'], ['menuju_jemput', 'Kurir menuju lokasi jemput'], ['mengantar', 'Barang sedang diantar'], ['selesai', 'Barang sampai']];
   const ORDER = ['menunggu_bayar', 'menunggu', 'diterima', 'menuju_jemput', 'mengantar', 'selesai'];
 
@@ -889,13 +923,14 @@ function startCustomer() {
     $('#t-title').textContent = AJ.statusOf(o);
     $('#t-code').textContent = o.id;
     const idx = ORDER.indexOf(o.status);
-    const steps = AJ.pay(o).metode === 'transfer' ? [['menunggu_bayar', 'Menunggu pembayaran']].concat(STEPS) : STEPS;
+    const baseSteps = AJ.isOjek(o) ? STEPS_OJEK : STEPS;
+    const steps = AJ.pay(o).metode === 'transfer' ? [['menunggu_bayar', 'Menunggu pembayaran']].concat(baseSteps) : baseSteps;
     $('#t-line').innerHTML = o.status === 'batal' ? '' : steps.map(([k, label]) => {
       const i = ORDER.indexOf(k);
       return ('<li class="' + (i <= idx ? 'done' : '') + ' ' + (i === idx ? 'now' : '') + '">' + (label) + '</li>');
     }).join('');
     const plain = 'style="font-family:var(--f-body)"';
-    $('#t-rows').innerHTML = ('\n      <dt>Dari</dt><dd ' + (plain) + '>' + (AJ.esc(o.pickup.alamat)) + '</dd>\n      <dt>Ke</dt><dd ' + (plain) + '>' + (AJ.esc(o.dropoff.alamat)) + '</dd>\n      <dt>Barang</dt><dd ' + (plain) + '>' + (AJ.esc(o.barang)) + ' (' + (AJ.esc((cfg.tarif.ukuran[o.ukuran] || {}).label || o.ukuran)) + ')</dd>\n      <dt>Jarak</dt><dd>' + (AJ.km(o.km)) + '</dd>\n      <dt>Pembayaran</dt><dd ' + (plain) + '>' + (AJ.esc(AJ.payLabel(o))) + '</dd>\n      <dt>Total bayar</dt><dd><strong>' + (AJ.rupiah(o.harga.total)) + '</strong></dd>');
+    $('#t-rows').innerHTML = ('\n      <dt>Dari</dt><dd ' + (plain) + '>' + (AJ.esc(o.pickup.alamat)) + '</dd>\n      <dt>Ke</dt><dd ' + (plain) + '>' + (AJ.esc(o.dropoff.alamat)) + '</dd>\n      ' + (AJ.isOjek(o) ? ('<dt>Layanan</dt><dd ' + plain + '>Ojek (antar orang)</dd>') : ('<dt>Barang</dt><dd ' + plain + '>' + AJ.esc(o.barang) + ' (' + AJ.esc((cfg.tarif.ukuran[o.ukuran] || {}).label || o.ukuran) + ')</dd>')) + '\n      <dt>Jarak</dt><dd>' + (AJ.km(o.km)) + '</dd>\n      <dt>Pembayaran</dt><dd ' + (plain) + '>' + (AJ.esc(AJ.payLabel(o))) + '</dd>\n      <dt>Total bayar</dt><dd><strong>' + (AJ.rupiah(o.harga.total)) + '</strong></dd>');
     const act = $('#t-actions'); act.innerHTML = '';
     const aktif = !['selesai', 'batal'].includes(o.status);
     if ((aktif || AJ.bySystem(o)) && cfg.kurirWa) {
@@ -983,7 +1018,7 @@ function startCustomer() {
     if (['selesai', 'batal'].includes(o.status)) { el.hidden = true; return; }
     el.hidden = false;
     if (o.status === 'menunggu_bayar') { el.innerHTML = AJ.reported(o) ? '<strong>Pembayaran sedang diperiksa</strong><small>Halaman ini otomatis berubah setelah pembayaran dikonfirmasi kurir.</small>' : '<strong>Menunggu pembayaran</strong><small>Kirim bukti transfer lewat WhatsApp. Halaman ini otomatis berubah setelah pembayaran dikonfirmasi.</small>'; return; }
-    if (o.status === 'menunggu') { el.innerHTML = '<strong>Menunggu kurir menerima</strong><small>Halaman ini otomatis berubah saat kurir mengambil pesanan.</small>'; return; }
+    if (o.status === 'menunggu') { el.innerHTML = (AJ.isOjek(o) ? '<strong>Menunggu driver menerima</strong><small>Halaman ini otomatis berubah saat driver mengambil pesanan.</small>' : '<strong>Menunggu kurir menerima</strong><small>Halaman ini otomatis berubah saat kurir mengambil pesanan.</small>'); return; }
     const l = o.lokasi;
     if (!l) { el.innerHTML = '<strong><span class="live off"></span>Menunggu lokasi kurir</strong><small>Peta akan menampilkan kurir begitu GPS-nya aktif.</small>'; return; }
     const target = o.status === 'mengantar' ? o.dropoff : o.pickup;
@@ -1085,7 +1120,7 @@ function renderList() {
     for (const o of arr) {
       const b = document.createElement('button');
       b.className = 'order' + (o.id === sel ? ' sel' : ''); b.type = 'button';
-      b.innerHTML = ('<div class="l1"><span class="code">' + (o.id) + '</span><span class="pill st-' + (AJ.stKey(o)) + '">' + (AJ.shortOf(o)) + '</span></div>\n        <div class="l2">' + (AJ.esc(o.pickup.alamat)) + ' \u2192 ' + (AJ.esc(o.dropoff.alamat)) + '</div>\n        <div class="l3">' + (AJ.km(o.km)) + ' \u00b7 ' + (AJ.rupiah(o.harga.total)) + '</div>');
+      b.innerHTML = ('<div class="l1"><span class="code">' + (o.id) + '</span><span class="pill st-' + (AJ.stKey(o)) + '">' + (AJ.shortOf(o)) + '</span></div>\n        <div class="l2">' + (AJ.esc(o.pickup.alamat)) + ' \u2192 ' + (AJ.esc(o.dropoff.alamat)) + '</div>\n        <div class="l3">' + (AJ.isOjek(o) ? 'OJEK \u00b7 ' : '') + (AJ.km(o.km)) + ' \u00b7 ' + (AJ.rupiah(o.harga.total)) + '</div>');
       b.addEventListener('click', () => select(o.id));
       el.appendChild(b);
     }
@@ -1101,20 +1136,22 @@ async function select(id) {
 }
 const NEXT = { menunggu_bayar: ['Uang sudah masuk, terima pesanan', 'diterima'], menunggu: ['Terima pesanan', 'diterima'], diterima: ['Berangkat jemput', 'menuju_jemput'],
   menuju_jemput: ['Barang sudah dijemput', 'mengantar'], mengantar: ['Selesai diantar', 'selesai'] };
+const NEXT_OJEK = Object.assign({}, NEXT, { menuju_jemput: ['Penumpang sudah naik', 'mengantar'], mengantar: ['Sudah sampai tujuan', 'selesai'] });
 function renderDetail(fit) {
   const o = orders.get(sel), el = $('#detail');
   if (!o) { el.innerHTML = '<p class="note">Pilih pesanan untuk melihat detail dan petanya.</p>'; return; }
+  const NX = AJ.isOjek(o) ? NEXT_OJEK : NEXT;
   const aktif = !['selesai', 'batal'].includes(o.status);
   const target = ['menunggu_bayar', 'menunggu', 'diterima', 'menuju_jemput'].includes(o.status) ? o.pickup : o.dropoff;
   const wa = o.hp.replace(/\D/g, '').replace(/^0/, '62');
   const plain = 'style="font-family:var(--f-body)"';
-  el.innerHTML = ('\n    <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap">\n      <span class="code" style="font-size:1.2rem;font-weight:600">' + (o.id) + '</span>\n      <span class="pill st-' + (AJ.stKey(o)) + '">' + (AJ.statusOf(o)) + '</span>\n    </div>\n    <div class="stops">\n      <div class="stop"><span class="dot">A</span><div><div class="sec-title">Jemput</div>' + (AJ.esc(o.pickup.alamat)) + '</div></div>\n      <div class="stop"><span class="dot b">B</span><div><div class="sec-title">Antar ke</div>' + (AJ.esc(o.dropoff.alamat)) + '</div></div>\n    </div>\n    <div class="card"><dl class="rows">\n      <dt>Barang</dt><dd ' + (plain) + '>' + (AJ.esc(o.barang)) + ' (' + (AJ.esc((cfg.tarif.ukuran[o.ukuran] || {}).label || o.ukuran)) + ')</dd>\n      ' + (o.catatan ? ('<dt>Catatan</dt><dd ' + (plain) + '>' + (AJ.esc(o.catatan)) + '</dd>') : '') + '\n      <dt>Pemesan</dt><dd ' + (plain) + '>' + (AJ.esc(o.nama)) + '</dd>\n      <dt>Jarak</dt><dd>' + (AJ.km(o.km)) + '</dd>\n      <dt>Pembayaran</dt><dd ' + (plain) + '>' + (AJ.esc(AJ.payLabel(o))) + '</dd>\n      <dt>' + (AJ.pay(o).metode === 'tunai' ? 'Tagih tunai' : 'Total') + '</dt><dd><strong>' + (AJ.rupiah(o.harga.total)) + '</strong></dd>\n    </dl></div>\n    ' + (o.status === 'menunggu_bayar' ? '<div class="warn">' + (AJ.reported(o) ? '<strong>Pelanggan melapor sudah transfer.</strong> ' : 'Pelanggan memilih transfer. ') + 'Cek mutasi rekening: jumlah <strong>' + AJ.rupiah(o.harga.total) + '</strong> dan kode pesanan harus cocok. Jangan hanya percaya tangkapan layar. Setelah uang masuk, ketuk tombol di bawah.</div>' : '') + '<div class="actions">\n      <a class="btn" href="https://wa.me/' + (wa) + '" target="_blank" rel="noopener">WhatsApp pemesan</a>\n      ' + (aktif ? ('<a class="btn" href="https://www.google.com/maps/dir/?api=1&destination=' + (target.lat) + ',' + (target.lng) + '&travelmode=two-wheeler" target="_blank" rel="noopener">Buka navigasi</a>') : '') + '\n    </div>\n    <p class="note">Nomor pemesan: <span class="code">' + (AJ.esc(o.hp)) + '</span></p>\n    ' + (aktif ? '<div class="card" id="gps-box"></div>' : '') + '\n    ' + (aktif && NEXT[o.status] ? ('<div class="stickybar"><button class="btn primary" id="btn-next">' + (NEXT[o.status][0]) + '</button>\n      ' + (o.status === 'menunggu_bayar' || o.status === 'menunggu' || o.status === 'diterima' ? '<button class="btn danger" id="btn-batal">Batalkan</button>' : '') + '</div>') : '') + '\n    ' + (o.status === 'batal' && AJ.bySystem(o) && AJ.pay(o).status !== 'lunas' ? '<div class="warn">Pesanan ini dibatalkan otomatis karena pembayaran belum diterima. Jika ternyata uangnya masuk (cek mutasi), Anda bisa mengaktifkannya kembali.</div><div class="stickybar"><button class="btn primary" id="btn-aktif">Uang ternyata masuk, aktifkan pesanan</button></div>' : '') + '<p class="err-msg" id="d-err" role="alert"></p>');
+  el.innerHTML = ('\n    <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap">\n      <span class="code" style="font-size:1.2rem;font-weight:600">' + (o.id) + '</span>\n      <span class="pill st-' + (AJ.stKey(o)) + '">' + (AJ.statusOf(o)) + '</span>\n    </div>\n    <div class="stops">\n      <div class="stop"><span class="dot">A</span><div><div class="sec-title">Jemput</div>' + (AJ.esc(o.pickup.alamat)) + '</div></div>\n      <div class="stop"><span class="dot b">B</span><div><div class="sec-title">Antar ke</div>' + (AJ.esc(o.dropoff.alamat)) + '</div></div>\n    </div>\n    <div class="card"><dl class="rows">\n      ' + (AJ.isOjek(o) ? ('<dt>Layanan</dt><dd ' + plain + '>Ojek (antar orang)</dd>') : ('<dt>Barang</dt><dd ' + plain + '>' + AJ.esc(o.barang) + ' (' + AJ.esc((cfg.tarif.ukuran[o.ukuran] || {}).label || o.ukuran) + ')</dd>')) + '\n      ' + (o.catatan ? ('<dt>Catatan</dt><dd ' + (plain) + '>' + (AJ.esc(o.catatan)) + '</dd>') : '') + '\n      <dt>Pemesan</dt><dd ' + (plain) + '>' + (AJ.esc(o.nama)) + '</dd>\n      <dt>Jarak</dt><dd>' + (AJ.km(o.km)) + '</dd>\n      <dt>Pembayaran</dt><dd ' + (plain) + '>' + (AJ.esc(AJ.payLabel(o))) + '</dd>\n      <dt>' + (AJ.pay(o).metode === 'tunai' ? 'Tagih tunai' : 'Total') + '</dt><dd><strong>' + (AJ.rupiah(o.harga.total)) + '</strong></dd>\n    </dl></div>\n    ' + (o.status === 'menunggu_bayar' ? '<div class="warn">' + (AJ.reported(o) ? '<strong>Pelanggan melapor sudah transfer.</strong> ' : 'Pelanggan memilih transfer. ') + 'Cek mutasi rekening: jumlah <strong>' + AJ.rupiah(o.harga.total) + '</strong> dan kode pesanan harus cocok. Jangan hanya percaya tangkapan layar. Setelah uang masuk, ketuk tombol di bawah.</div>' : '') + '<div class="actions">\n      <a class="btn" href="https://wa.me/' + (wa) + '" target="_blank" rel="noopener">WhatsApp pemesan</a>\n      ' + (aktif ? ('<a class="btn" href="https://www.google.com/maps/dir/?api=1&destination=' + (target.lat) + ',' + (target.lng) + '&travelmode=two-wheeler" target="_blank" rel="noopener">Buka navigasi</a>') : '') + '\n    </div>\n    <p class="note">Nomor pemesan: <span class="code">' + (AJ.esc(o.hp)) + '</span></p>\n    ' + (aktif ? '<div class="card" id="gps-box"></div>' : '') + '\n    ' + (aktif && NX[o.status] ? ('<div class="stickybar"><button class="btn primary" id="btn-next">' + (NX[o.status][0]) + '</button>\n      ' + (o.status === 'menunggu_bayar' || o.status === 'menunggu' || o.status === 'diterima' ? '<button class="btn danger" id="btn-batal">Batalkan</button>' : '') + '</div>') : '') + '\n    ' + (o.status === 'batal' && AJ.bySystem(o) && AJ.pay(o).status !== 'lunas' ? '<div class="warn">Pesanan ini dibatalkan otomatis karena pembayaran belum diterima. Jika ternyata uangnya masuk (cek mutasi), Anda bisa mengaktifkannya kembali.</div><div class="stickybar"><button class="btn primary" id="btn-aktif">Uang ternyata masuk, aktifkan pesanan</button></div>' : '') + '<p class="err-msg" id="d-err" role="alert"></p>');
   const nx = $('#btn-next');
   if (nx) nx.addEventListener('click', async () => {
     nx.disabled = true;
     try {
       if (o.status === 'menunggu_bayar' && nx.dataset.sure !== '1') { nx.dataset.sure = '1'; nx.textContent = 'Ketuk lagi: uang benar-benar sudah masuk'; nx.disabled = false; return; }
-      const next = NEXT[o.status][1];
+      const next = NX[o.status][1];
       const upd = o.status === 'menunggu_bayar' ? await kcall('kBayar', { id: o.id }) : await kcall('kStatus', { id: o.id, status: next });
       orders.set(upd.id, { ...o, ...upd });
       if (next === 'menuju_jemput' || next === 'mengantar') startGps(o.id);
@@ -1211,6 +1248,9 @@ function flat(c) {
     dasar: c.tarif.dasar, kmTermasuk: c.tarif.kmTermasuk, perKm: c.tarif.perKm, minimum: c.tarif.minimum, pembulatan: c.tarif.pembulatan, maksJarakKm: c.tarif.maksJarakKm, logo_nama: c.logoNama === false ? '0' : '1',
     bayar_tunai: c.bayar && c.bayar.tunai === false ? '0' : '1', bayar_transfer: c.bayar && c.bayar.transfer ? '1' : '0',
     bank_nama: c.bayar ? c.bayar.bank.nama : '', bank_rek: c.bayar ? c.bayar.bank.rek : '', bank_atas: c.bayar ? c.bayar.bank.atas : '', bayar_catatan: c.bayar ? c.bayar.catatan : '', bayar_batas_menit: c.bayar ? c.bayar.batasMenit : 60, warna: (c.warna || AJ.WARNA).toLowerCase() };
+  const oj = c.tarif.ojek || {};
+  f.layanan_barang = c.layanan && c.layanan.barang === false ? '0' : '1'; f.layanan_ojek = c.layanan && c.layanan.ojek ? '1' : '0';
+  f.ojek_dasar = oj.dasar; f.ojek_kmTermasuk = oj.kmTermasuk; f.ojek_perKm = oj.perKm; f.ojek_minimum = oj.minimum;
   for (const [k, u] of Object.entries(c.tarif.ukuran)) { f[('ukuran_' + (k) + '_label')] = u.label; f[('ukuran_' + (k) + '_ket')] = u.ket; f[('ukuran_' + (k) + '_tambahan')] = u.tambahan; }
   return f;
 }
@@ -1226,6 +1266,8 @@ function buildSettings() {
       new FormData(form).forEach((v, k) => { if (k !== 'pinBaru') settings[k] = v; });
       settings.bayar_tunai = $('#s-bayar_tunai').checked ? '1' : '0';
       settings.bayar_transfer = $('#s-bayar_transfer').checked ? '1' : '0';
+      settings.layanan_barang = $('#s-layanan_barang').checked ? '1' : '0';
+      settings.layanan_ojek = $('#s-layanan_ojek').checked ? '1' : '0';
       const btn = $('#set-save'); btn.disabled = true;
       try {
         const pb = $('#s-pin').value;
