@@ -53,6 +53,9 @@ a { color: var(--brand); }
 .sw.on { box-shadow: 0 0 0 3px var(--ink); }
 .color-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
 .colorin { width: 64px; height: 44px; padding: 2px; border-radius: 10px; border: 1.5px solid var(--line); background: var(--surface); cursor: pointer; }
+.qris-box { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 14px; background: #fff; border-radius: 12px; border: 1px solid var(--line); }
+.qris-img { width: min(100%, 320px); height: auto; background: #fff; display: block; }
+.logo-box.qris-prevbox { width: 168px; height: 168px; background: #fff; }
 .chk { display: flex; gap: 10px; align-items: center; cursor: pointer; }
 .chk input { width: 20px; height: 20px; accent-color: var(--brand); }
 
@@ -412,14 +415,26 @@ button, a, .opt, .chip { -webkit-tap-highlight-color: transparent; }
           <h2>Pembayaran</h2>
           <label class="chk"><input type="checkbox" id="s-bayar_tunai"> Terima tunai (bayar ke kurir saat barang sampai)</label>
           <label class="chk"><input type="checkbox" id="s-bayar_transfer"> Terima transfer bank (pesanan diproses setelah pembayaran Anda konfirmasi)</label>
+          <label class="chk"><input type="checkbox" id="s-bayar_qris"> Terima QRIS (konfirmasi manual lewat WhatsApp)</label>
           <div class="setgrid">
             <div class="field"><label class="lbl" for="s-bank_nama">Nama bank</label><input class="in" id="s-bank_nama" name="bank_nama" maxlength="40" placeholder="Contoh: BCA"></div>
             <div class="field"><label class="lbl" for="s-bank_rek">Nomor rekening</label><input class="in" id="s-bank_rek" name="bank_rek" inputmode="numeric" maxlength="30"></div>
             <div class="field"><label class="lbl" for="s-bank_atas">Atas nama</label><input class="in" id="s-bank_atas" name="bank_atas" maxlength="60"></div>
           </div>
           <div class="field"><label class="lbl" for="s-bayar_catatan">Catatan untuk pelanggan (boleh kosong)</label><input class="in" id="s-bayar_catatan" name="bayar_catatan" maxlength="160" placeholder="Contoh: Cantumkan kode pesanan di berita transfer"></div>
+          <div class="field"><label class="lbl" for="s-qris_nama">Nama merchant QRIS (boleh kosong)</label><input class="in" id="s-qris_nama" name="qris_nama" maxlength="60" placeholder="Contoh: Toko Maju Jaya"></div>
+          <div class="logo-row">
+            <div class="logo-box qris-prevbox"><img id="qris-prev" alt="Pratinjau QRIS" hidden><span class="note" id="qris-empty">Belum ada gambar QRIS</span></div>
+            <div class="logo-actions">
+              <button class="btn" type="button" id="s-qris-pick">Pilih gambar QRIS</button>
+              <button class="btn danger" type="button" id="s-qris-del" hidden>Hapus gambar QRIS</button>
+              <input type="file" id="s-qris-file" accept="image/png,image/jpeg,image/webp" hidden>
+            </div>
+          </div>
+          <p class="note" id="qris-note" role="status"></p>
+          <p class="note"><strong>Gambar QRIS:</strong> pakai QRIS statis milik Anda (dari bank, e-wallet, atau penyedia QRIS). Foto atau tangkapan layar yang jelas, kode QR persegi, minimal 500 px, latar putih polos. Aplikasi mengecilkannya otomatis ke maksimal 720 px dan sekitar 65 KB. Setelah disimpan, <strong>uji scan dari layar HP lain</strong>. QRIS statis meminta pelanggan mengetik nominal sendiri, jadi pembayaran tetap Anda cocokkan manual dengan mutasi atau notifikasi.</p>
           <div class="field"><label class="lbl" for="s-bayar_batas_menit">Batal otomatis bila belum dibayar (menit, 0 = tidak pernah)</label><input class="in" id="s-bayar_batas_menit" name="bayar_batas_menit" inputmode="numeric" maxlength="4"></div>
-          <p class="note">Pesanan transfer yang belum dibayar dibatalkan otomatis setelah batas waktu itu. Pesanan yang pelanggannya sudah menekan "Saya sudah transfer" tidak ikut dibatalkan, Anda yang memutuskan setelah mengecek mutasi.</p>
+          <p class="note">Pesanan transfer yang belum dibayar dibatalkan otomatis setelah batas waktu itu. Pesanan yang pelanggannya sudah menekan "Saya sudah bayar" tidak ikut dibatalkan, Anda yang memutuskan setelah mengecek mutasi.</p>
           <p class="note">Konfirmasi pembayaran lewat WhatsApp kurir (nomor di bagian Aplikasi). Pelanggan mengirim bukti transfer ke nomor itu, lalu Anda mencocokkannya dengan mutasi rekening dan menekan tombol konfirmasi di halaman pesanan.</p>
         </div>
         <div class="setgroup">
@@ -644,11 +659,14 @@ AJ.brand = () => (getComputedStyle(document.documentElement).getPropertyValue('-
 AJ.pay = (o) => o.bayar || { metode: 'tunai', status: 'tunai' };
 AJ.payLabel = (o) => {
   const p = AJ.pay(o);
-  if (p.metode !== 'transfer') return AJ.isOjek(o) ? 'Tunai ke driver saat sampai tujuan' : 'Tunai ke kurir saat barang sampai';
-  if (p.status === 'lunas') return 'Transfer (sudah dikonfirmasi)';
-  if (o.status === 'batal') return 'Transfer (dibatalkan)';
-  return p.status === 'dilaporkan' ? 'Transfer (pelanggan melapor sudah transfer, cek mutasi)' : 'Transfer (menunggu konfirmasi)';
+  if (p.metode === 'tunai') return AJ.isOjek(o) ? 'Tunai ke driver saat sampai tujuan' : 'Tunai ke kurir saat barang sampai';
+  const nm = p.metode === 'qris' ? 'QRIS' : 'Transfer';
+  if (p.status === 'lunas') return nm + ' (sudah dikonfirmasi)';
+  if (o.status === 'batal') return nm + ' (dibatalkan)';
+  return p.status === 'dilaporkan' ? nm + ' (pelanggan melapor sudah bayar, cek mutasi)' : nm + ' (menunggu konfirmasi)';
 };
+AJ.prepaid = (o) => AJ.pay(o).metode !== 'tunai';
+AJ.getQris = () => AJ.qrisP || (AJ.qrisP = AJ.call('qris').then((d) => (d && d.gambar) || '').catch((e) => { AJ.qrisP = null; throw e; }));
 AJ.reported = (o) => o.status === 'menunggu_bayar' && AJ.pay(o).status === 'dilaporkan';
 AJ.stKey = (o) => (AJ.reported(o) ? 'dilaporkan' : o.status);
 AJ.shortOf = (o) => (AJ.reported(o) ? 'Cek bayar' : AJ.SHORT[o.status]);
@@ -656,22 +674,23 @@ AJ.statusOf = (o) => (AJ.reported(o) ? 'Pembayaran sedang diperiksa' : (AJ.isOje
 AJ.bySystem = (o) => (o.riwayat || []).some((r) => r.oleh === 'sistem');
 AJ.canCancel = (o) => ['menunggu_bayar', 'menunggu', 'diterima'].includes(o.status) && AJ.pay(o).status !== 'lunas';
 
-AJ.logoFromFile = (file) => new Promise((ok, no) => {
+AJ.logoFromFile = (file, opt) => new Promise((ok, no) => {
   if (!/^image\/(png|jpeg|webp)$/.test(file.type)) return no(new Error('Format harus PNG, JPG, atau WebP.'));
   if (file.size > 5 * 1024 * 1024) return no(new Error('Ukuran file maksimal 5 MB.'));
   const url = URL.createObjectURL(file), img = new Image();
   img.onerror = () => { URL.revokeObjectURL(url); no(new Error('Gambar tidak bisa dibaca.')); };
   img.onload = () => {
     URL.revokeObjectURL(url);
-    const MAXW = 360, MAXH = 160, LIMIT = 45000;
+    const o = opt || {};
+    const MAXW = o.maxW || 360, MAXH = o.maxH || 160, LIMIT = o.limit || 45000;
     const base = Math.min(1, MAXW / img.naturalWidth, MAXH / img.naturalHeight);
     const jpg = file.type === 'image/jpeg';
     const fmts = jpg ? ['image/jpeg'] : ['image/png', 'image/webp'];
-    for (const sc of [1, 0.85, 0.7, 0.55, 0.4]) {
+    for (const sc of (o.scales || [1, 0.85, 0.7, 0.55, 0.4])) {
       const w = Math.max(1, Math.round(img.naturalWidth * base * sc)), h = Math.max(1, Math.round(img.naturalHeight * base * sc));
       const c = document.createElement('canvas'); c.width = w; c.height = h;
       const g = c.getContext('2d');
-      if (jpg) { g.fillStyle = '#fff'; g.fillRect(0, 0, w, h); }
+      if (jpg || o.opaque) { g.fillStyle = '#fff'; g.fillRect(0, 0, w, h); }
       g.drawImage(img, 0, 0, w, h);
       for (const f of fmts) {
         for (const q of [0.92, 0.8, 0.65]) {
@@ -787,7 +806,7 @@ function startCustomer() {
   }
   $('#ukuran').addEventListener('change', (e) => { st.ukuran = e.target.value; requote(); });
 
-  const PAY = [['tunai', 'Tunai', 'Bayar ke kurir saat barang sampai'], ['transfer', 'Transfer bank', 'Bayar dulu, konfirmasi lewat WhatsApp']];
+  const PAY = [['tunai', 'Tunai', 'Bayar ke kurir saat barang sampai'], ['transfer', 'Transfer bank', 'Bayar dulu, konfirmasi lewat WhatsApp'], ['qris', 'QRIS', 'Scan kode QR, konfirmasi lewat WhatsApp']];
   const payOn = PAY.filter((p) => cfg.bayar && cfg.bayar[p[0]]);
   st.metode = payOn.length ? payOn[0][0] : 'tunai';
   $('#bayar-opts').innerHTML = payOn.map((p) => '<label class="opt"><input type="radio" name="metode" value="' + p[0] + '"' + (p[0] === st.metode ? ' checked' : '') +
@@ -796,6 +815,7 @@ function startCustomer() {
   const payNote = () => {
     $('#pay-note').textContent = st.metode === 'transfer'
       ? 'Transfer dulu, lalu kirim bukti lewat WhatsApp. Kurir mulai bergerak setelah pembayaran dikonfirmasi.'
+      : st.metode === 'qris' ? 'Scan kode QRIS lalu bayar sesuai nominal, kirim bukti lewat WhatsApp. Kurir mulai bergerak setelah pembayaran dikonfirmasi.'
       : 'Bayar tunai ke kurir saat barang sampai.';
   };
   $('#bayar-opts').addEventListener('change', (e) => { st.metode = e.target.value; payNote(); });
@@ -924,7 +944,7 @@ function startCustomer() {
     $('#t-code').textContent = o.id;
     const idx = ORDER.indexOf(o.status);
     const baseSteps = AJ.isOjek(o) ? STEPS_OJEK : STEPS;
-    const steps = AJ.pay(o).metode === 'transfer' ? [['menunggu_bayar', 'Menunggu pembayaran']].concat(baseSteps) : baseSteps;
+    const steps = AJ.prepaid(o) ? [['menunggu_bayar', 'Menunggu pembayaran']].concat(baseSteps) : baseSteps;
     $('#t-line').innerHTML = o.status === 'batal' ? '' : steps.map(([k, label]) => {
       const i = ORDER.indexOf(k);
       return ('<li class="' + (i <= idx ? 'done' : '') + ' ' + (i === idx ? 'now' : '') + '">' + (label) + '</li>');
@@ -943,7 +963,7 @@ function startCustomer() {
       const b = document.createElement('button');
       b.className = 'btn danger'; b.textContent = 'Batalkan pesanan';
       b.addEventListener('click', async () => {
-        if (b.dataset.sure !== '1') { b.dataset.sure = '1'; b.textContent = o.status === 'menunggu_bayar' ? 'Jika sudah transfer, hubungi kurir dulu. Ketuk lagi untuk membatalkan' : 'Ketuk lagi untuk membatalkan'; return; }
+        if (b.dataset.sure !== '1') { b.dataset.sure = '1'; b.textContent = o.status === 'menunggu_bayar' ? 'Jika sudah membayar, hubungi kurir dulu. Ketuk lagi untuk membatalkan' : 'Ketuk lagi untuk membatalkan'; return; }
         try { cur = await AJ.call('cancel', { id: o.id }); render(); }
         catch (ex) { $('#t-err').textContent = ex.message; }
       });
@@ -966,39 +986,53 @@ function startCustomer() {
   function renderPay() {
     const o = cur, el = $('#t-pay'); if (!o) return;
     const p = AJ.pay(o);
-    if (p.metode !== 'transfer' || o.status !== 'menunggu_bayar') { el.hidden = true; el.innerHTML = ''; el.dataset.k = ''; return; }
+    if (p.metode === 'tunai' || o.status !== 'menunggu_bayar') { el.hidden = true; el.innerHTML = ''; el.dataset.k = ''; return; }
     const key = o.id + ':' + p.status;
     el.hidden = false;
     if (el.dataset.k === key) return;
     el.dataset.k = key;
-    const sudah = p.status === 'dilaporkan';
+    const sudah = p.status === 'dilaporkan', qr = p.metode === 'qris';
     const bk = (cfg.bayar && cfg.bayar.bank) || {};
-    const pesan = 'Halo, saya sudah transfer untuk pesanan ' + o.id + ' sebesar ' + AJ.rupiah(o.harga.total) + ' a.n. ' + o.nama + '. Bukti transfer saya kirim di chat ini.';
+    const pesan = 'Halo, saya sudah bayar' + (qr ? ' via QRIS' : ' (transfer)') + ' untuk pesanan ' + o.id + ' sebesar ' + AJ.rupiah(o.harga.total) + ' a.n. ' + o.nama + '. Bukti pembayaran saya kirim di chat ini.';
     const plain = 'style="font-family:var(--f-body)"';
-    el.innerHTML = '<h2>Transfer pembayaran</h2>' +
-      '<dl class="rows"><dt>Jumlah</dt><dd><strong>' + AJ.rupiah(o.harga.total) + '</strong></dd>' +
-      '<dt>Bank</dt><dd ' + plain + '>' + AJ.esc(bk.nama) + '</dd>' +
-      '<dt>No. rekening</dt><dd>' + AJ.esc(bk.rek) + '</dd>' +
-      '<dt>Atas nama</dt><dd ' + plain + '>' + AJ.esc(bk.atas) + '</dd></dl>' +
-      ((cfg.bayar && cfg.bayar.catatan) ? '<p class="note">' + AJ.esc(cfg.bayar.catatan) + '</p>' : '') +
+    const rows = qr
+      ? '<dl class="rows"><dt>Jumlah</dt><dd><strong>' + AJ.rupiah(o.harga.total) + '</strong></dd>' +
+        ((cfg.bayar && cfg.bayar.qrisNama) ? '<dt>Merchant</dt><dd ' + plain + '>' + AJ.esc(cfg.bayar.qrisNama) + '</dd>' : '') + '</dl>'
+      : '<dl class="rows"><dt>Jumlah</dt><dd><strong>' + AJ.rupiah(o.harga.total) + '</strong></dd>' +
+        '<dt>Bank</dt><dd ' + plain + '>' + AJ.esc(bk.nama) + '</dd>' +
+        '<dt>No. rekening</dt><dd>' + AJ.esc(bk.rek) + '</dd>' +
+        '<dt>Atas nama</dt><dd ' + plain + '>' + AJ.esc(bk.atas) + '</dd></dl>';
+    el.innerHTML = '<h2>' + (qr ? 'Bayar dengan QRIS' : 'Transfer pembayaran') + '</h2>' + rows +
+      (qr ? '<div class="qris-box" id="t-qris"><p class="note">Memuat kode QR...</p></div>' : '') +
+      ((!qr && cfg.bayar && cfg.bayar.catatan) ? '<p class="note">' + AJ.esc(cfg.bayar.catatan) + '</p>' : '') +
       (sudah
-        ? '<p class="note"><strong>Terima kasih.</strong> Pembayaran Anda sedang diperiksa kurir. Kirim bukti transfer lewat WhatsApp bila belum.</p>'
-        : '<p class="note">Transfer sesuai jumlah di atas, lalu tekan Saya sudah transfer dan kirim bukti lewat WhatsApp. Pesanan diproses setelah pembayaran dikonfirmasi.</p><p class="note" id="t-pay-sisa"></p>') +
-      '<div class="actions">' + (sudah ? '' : '<button class="btn primary" type="button" id="t-lapor">Saya sudah transfer</button>') +
+        ? '<p class="note"><strong>Terima kasih.</strong> Pembayaran Anda sedang diperiksa kurir. Kirim bukti pembayaran lewat WhatsApp bila belum.</p>'
+        : '<p class="note">' + (qr ? 'Buka e-wallet atau m-banking, scan kode di atas, lalu ketik nominal persis sesuai jumlah di atas. ' : 'Transfer sesuai jumlah di atas. ') +
+          'Setelah membayar, tekan Saya sudah bayar dan kirim bukti lewat WhatsApp. Pesanan diproses setelah pembayaran dikonfirmasi.</p><p class="note" id="t-pay-sisa"></p>') +
+      '<div class="actions">' + (sudah ? '' : '<button class="btn primary" type="button" id="t-lapor">Saya sudah bayar</button>') +
       (cfg.kurirWa ? '<a class="btn' + (sudah ? ' primary' : '') + '" id="t-wabukti" target="_blank" rel="noopener" href="' + AJ.esc('https://wa.me/' + cfg.kurirWa + '?text=' + encodeURIComponent(pesan)) + '">Kirim bukti via WhatsApp</a>' : '') +
-      '<button class="btn" type="button" id="t-copyrek">Salin no. rekening</button></div>';
+      (qr ? '' : '<button class="btn" type="button" id="t-copyrek">Salin no. rekening</button>') + '</div>';
     const lapor = async () => {
       try { cur = await AJ.call('lapor', { id: o.id }); render(); }
       catch (ex) { $('#t-err').textContent = ex.message; }
     };
     if (!sudah) {
       $('#t-lapor').addEventListener('click', lapor);
-      const wa = $('#t-wabukti'); if (wa) wa.addEventListener('click', lapor); // membuka WhatsApp sekaligus menandai sudah transfer
+      const wa = $('#t-wabukti'); if (wa) wa.addEventListener('click', lapor); // membuka WhatsApp sekaligus menandai sudah bayar
     }
-    $('#t-copyrek').addEventListener('click', async () => {
-      try { await navigator.clipboard.writeText(String(bk.rek || '').replace(/\D/g, '')); AJ.toast('Nomor rekening disalin.'); }
-      catch (_e) { AJ.toast('Tekan lama pada nomor rekening lalu pilih Salin.'); }
-    });
+    if (qr) {
+      AJ.getQris().then((img) => {
+        const box = $('#t-qris'); if (!box) return;
+        if (!img) { box.innerHTML = '<p class="note">Kode QRIS belum tersedia. Hubungi kurir lewat WhatsApp.</p>'; return; }
+        const ext = img.indexOf('data:image/png') === 0 ? 'png' : img.indexOf('data:image/webp') === 0 ? 'webp' : 'jpg';
+        box.innerHTML = '<img class="qris-img" alt="Kode QRIS" src="' + img + '"><a class="btn" download="qris.' + ext + '" href="' + img + '">Simpan gambar QRIS</a>';
+      }).catch(() => { const box = $('#t-qris'); if (box) box.innerHTML = '<p class="note">Kode QRIS gagal dimuat. Muat ulang halaman atau hubungi kurir lewat WhatsApp.</p>'; });
+    } else {
+      $('#t-copyrek').addEventListener('click', async () => {
+        try { await navigator.clipboard.writeText(String(bk.rek || '').replace(/\D/g, '')); AJ.toast('Nomor rekening disalin.'); }
+        catch (_e) { AJ.toast('Tekan lama pada nomor rekening lalu pilih Salin.'); }
+      });
+    }
   }
 
   function renderEta() {
@@ -1007,8 +1041,8 @@ function startCustomer() {
     if (sisa && cfg.bayar && cfg.bayar.batasMenit > 0) {
       const ms = o.dibuat + cfg.bayar.batasMenit * 60000 - Date.now();
       sisa.textContent = ms > 0
-        ? 'Bayar dalam ' + Math.ceil(ms / 60000) + ' menit, atau pesanan dibatalkan otomatis. Jika sudah transfer, tekan Saya sudah transfer.'
-        : 'Batas waktu pembayaran habis. Tekan Saya sudah transfer bila Anda sudah membayar.';
+        ? 'Bayar dalam ' + Math.ceil(ms / 60000) + ' menit, atau pesanan dibatalkan otomatis. Jika sudah membayar, tekan Saya sudah bayar.'
+        : 'Batas waktu pembayaran habis. Tekan Saya sudah bayar bila Anda sudah membayar.';
     }
     if (o.status === 'batal' && AJ.bySystem(o)) {
       el.hidden = false;
@@ -1017,7 +1051,7 @@ function startCustomer() {
     }
     if (['selesai', 'batal'].includes(o.status)) { el.hidden = true; return; }
     el.hidden = false;
-    if (o.status === 'menunggu_bayar') { el.innerHTML = AJ.reported(o) ? '<strong>Pembayaran sedang diperiksa</strong><small>Halaman ini otomatis berubah setelah pembayaran dikonfirmasi kurir.</small>' : '<strong>Menunggu pembayaran</strong><small>Kirim bukti transfer lewat WhatsApp. Halaman ini otomatis berubah setelah pembayaran dikonfirmasi.</small>'; return; }
+    if (o.status === 'menunggu_bayar') { el.innerHTML = AJ.reported(o) ? '<strong>Pembayaran sedang diperiksa</strong><small>Halaman ini otomatis berubah setelah pembayaran dikonfirmasi kurir.</small>' : '<strong>Menunggu pembayaran</strong><small>Kirim bukti pembayaran lewat WhatsApp. Halaman ini otomatis berubah setelah pembayaran dikonfirmasi.</small>'; return; }
     if (o.status === 'menunggu') { el.innerHTML = (AJ.isOjek(o) ? '<strong>Menunggu driver menerima</strong><small>Halaman ini otomatis berubah saat driver mengambil pesanan.</small>' : '<strong>Menunggu kurir menerima</strong><small>Halaman ini otomatis berubah saat kurir mengambil pesanan.</small>'); return; }
     const l = o.lokasi;
     if (!l) { el.innerHTML = '<strong><span class="live off"></span>Menunggu lokasi kurir</strong><small>Peta akan menampilkan kurir begitu GPS-nya aktif.</small>'; return; }
@@ -1100,7 +1134,7 @@ async function refresh(first) {
     for (const o of list) {
       const old = orders.get(o.id);
       if (!first && !old && (o.status === 'menunggu' || o.status === 'menunggu_bayar')) { AJ.toast('Pesanan baru: ' + o.id + (o.status === 'menunggu_bayar' ? ' (menunggu pembayaran)' : '')); beep(); }
-      if (!first && old && !AJ.reported(old) && AJ.reported(o)) { AJ.toast('Sudah transfer: ' + o.id + '. Cek mutasi rekening.'); beep(); }
+      if (!first && old && !AJ.reported(old) && AJ.reported(o)) { AJ.toast('Sudah bayar: ' + o.id + '. Cek mutasi rekening.'); beep(); }
       orders.set(o.id, { ...(old || {}), ...o });
     }
     renderList(); if (sel) renderDetail(false);
@@ -1125,7 +1159,7 @@ function renderList() {
       el.appendChild(b);
     }
   };
-  add('Perlu dicek: sudah transfer', cek); add('Aktif', aktif); add('Selesai', lain);
+  add('Perlu dicek: sudah bayar', cek); add('Aktif', aktif); add('Selesai', lain);
 }
 async function select(id) {
   sel = id; renderList();
@@ -1145,7 +1179,7 @@ function renderDetail(fit) {
   const target = ['menunggu_bayar', 'menunggu', 'diterima', 'menuju_jemput'].includes(o.status) ? o.pickup : o.dropoff;
   const wa = o.hp.replace(/\D/g, '').replace(/^0/, '62');
   const plain = 'style="font-family:var(--f-body)"';
-  el.innerHTML = ('\n    <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap">\n      <span class="code" style="font-size:1.2rem;font-weight:600">' + (o.id) + '</span>\n      <span class="pill st-' + (AJ.stKey(o)) + '">' + (AJ.statusOf(o)) + '</span>\n    </div>\n    <div class="stops">\n      <div class="stop"><span class="dot">A</span><div><div class="sec-title">Jemput</div>' + (AJ.esc(o.pickup.alamat)) + '</div></div>\n      <div class="stop"><span class="dot b">B</span><div><div class="sec-title">Antar ke</div>' + (AJ.esc(o.dropoff.alamat)) + '</div></div>\n    </div>\n    <div class="card"><dl class="rows">\n      ' + (AJ.isOjek(o) ? ('<dt>Layanan</dt><dd ' + plain + '>Ojek (antar orang)</dd>') : ('<dt>Barang</dt><dd ' + plain + '>' + AJ.esc(o.barang) + ' (' + AJ.esc((cfg.tarif.ukuran[o.ukuran] || {}).label || o.ukuran) + ')</dd>')) + '\n      ' + (o.catatan ? ('<dt>Catatan</dt><dd ' + (plain) + '>' + (AJ.esc(o.catatan)) + '</dd>') : '') + '\n      <dt>Pemesan</dt><dd ' + (plain) + '>' + (AJ.esc(o.nama)) + '</dd>\n      <dt>Jarak</dt><dd>' + (AJ.km(o.km)) + '</dd>\n      <dt>Pembayaran</dt><dd ' + (plain) + '>' + (AJ.esc(AJ.payLabel(o))) + '</dd>\n      <dt>' + (AJ.pay(o).metode === 'tunai' ? 'Tagih tunai' : 'Total') + '</dt><dd><strong>' + (AJ.rupiah(o.harga.total)) + '</strong></dd>\n    </dl></div>\n    ' + (o.status === 'menunggu_bayar' ? '<div class="warn">' + (AJ.reported(o) ? '<strong>Pelanggan melapor sudah transfer.</strong> ' : 'Pelanggan memilih transfer. ') + 'Cek mutasi rekening: jumlah <strong>' + AJ.rupiah(o.harga.total) + '</strong> dan kode pesanan harus cocok. Jangan hanya percaya tangkapan layar. Setelah uang masuk, ketuk tombol di bawah.</div>' : '') + '<div class="actions">\n      <a class="btn" href="https://wa.me/' + (wa) + '" target="_blank" rel="noopener">WhatsApp pemesan</a>\n      ' + (aktif ? ('<a class="btn" href="https://www.google.com/maps/dir/?api=1&destination=' + (target.lat) + ',' + (target.lng) + '&travelmode=two-wheeler" target="_blank" rel="noopener">Buka navigasi</a>') : '') + '\n    </div>\n    <p class="note">Nomor pemesan: <span class="code">' + (AJ.esc(o.hp)) + '</span></p>\n    ' + (aktif ? '<div class="card" id="gps-box"></div>' : '') + '\n    ' + (aktif && NX[o.status] ? ('<div class="stickybar"><button class="btn primary" id="btn-next">' + (NX[o.status][0]) + '</button>\n      ' + (o.status === 'menunggu_bayar' || o.status === 'menunggu' || o.status === 'diterima' ? '<button class="btn danger" id="btn-batal">Batalkan</button>' : '') + '</div>') : '') + '\n    ' + (o.status === 'batal' && AJ.bySystem(o) && AJ.pay(o).status !== 'lunas' ? '<div class="warn">Pesanan ini dibatalkan otomatis karena pembayaran belum diterima. Jika ternyata uangnya masuk (cek mutasi), Anda bisa mengaktifkannya kembali.</div><div class="stickybar"><button class="btn primary" id="btn-aktif">Uang ternyata masuk, aktifkan pesanan</button></div>' : '') + '<p class="err-msg" id="d-err" role="alert"></p>');
+  el.innerHTML = ('\n    <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap">\n      <span class="code" style="font-size:1.2rem;font-weight:600">' + (o.id) + '</span>\n      <span class="pill st-' + (AJ.stKey(o)) + '">' + (AJ.statusOf(o)) + '</span>\n    </div>\n    <div class="stops">\n      <div class="stop"><span class="dot">A</span><div><div class="sec-title">Jemput</div>' + (AJ.esc(o.pickup.alamat)) + '</div></div>\n      <div class="stop"><span class="dot b">B</span><div><div class="sec-title">Antar ke</div>' + (AJ.esc(o.dropoff.alamat)) + '</div></div>\n    </div>\n    <div class="card"><dl class="rows">\n      ' + (AJ.isOjek(o) ? ('<dt>Layanan</dt><dd ' + plain + '>Ojek (antar orang)</dd>') : ('<dt>Barang</dt><dd ' + plain + '>' + AJ.esc(o.barang) + ' (' + AJ.esc((cfg.tarif.ukuran[o.ukuran] || {}).label || o.ukuran) + ')</dd>')) + '\n      ' + (o.catatan ? ('<dt>Catatan</dt><dd ' + (plain) + '>' + (AJ.esc(o.catatan)) + '</dd>') : '') + '\n      <dt>Pemesan</dt><dd ' + (plain) + '>' + (AJ.esc(o.nama)) + '</dd>\n      <dt>Jarak</dt><dd>' + (AJ.km(o.km)) + '</dd>\n      <dt>Pembayaran</dt><dd ' + (plain) + '>' + (AJ.esc(AJ.payLabel(o))) + '</dd>\n      <dt>' + (AJ.pay(o).metode === 'tunai' ? 'Tagih tunai' : 'Total') + '</dt><dd><strong>' + (AJ.rupiah(o.harga.total)) + '</strong></dd>\n    </dl></div>\n    ' + (o.status === 'menunggu_bayar' ? '<div class="warn">' + (AJ.reported(o) ? '<strong>Pelanggan melapor sudah bayar.</strong> ' : (AJ.pay(o).metode === 'qris' ? 'Pelanggan memilih QRIS. ' : 'Pelanggan memilih transfer. ')) + 'Cek mutasi rekening: jumlah <strong>' + AJ.rupiah(o.harga.total) + '</strong> dan kode pesanan harus cocok. Jangan hanya percaya tangkapan layar. Setelah uang masuk, ketuk tombol di bawah.</div>' : '') + '<div class="actions">\n      <a class="btn" href="https://wa.me/' + (wa) + '" target="_blank" rel="noopener">WhatsApp pemesan</a>\n      ' + (aktif ? ('<a class="btn" href="https://www.google.com/maps/dir/?api=1&destination=' + (target.lat) + ',' + (target.lng) + '&travelmode=two-wheeler" target="_blank" rel="noopener">Buka navigasi</a>') : '') + '\n    </div>\n    <p class="note">Nomor pemesan: <span class="code">' + (AJ.esc(o.hp)) + '</span></p>\n    ' + (aktif ? '<div class="card" id="gps-box"></div>' : '') + '\n    ' + (aktif && NX[o.status] ? ('<div class="stickybar"><button class="btn primary" id="btn-next">' + (NX[o.status][0]) + '</button>\n      ' + (o.status === 'menunggu_bayar' || o.status === 'menunggu' || o.status === 'diterima' ? '<button class="btn danger" id="btn-batal">Batalkan</button>' : '') + '</div>') : '') + '\n    ' + (o.status === 'batal' && AJ.bySystem(o) && AJ.pay(o).status !== 'lunas' ? '<div class="warn">Pesanan ini dibatalkan otomatis karena pembayaran belum diterima. Jika ternyata uangnya masuk (cek mutasi), Anda bisa mengaktifkannya kembali.</div><div class="stickybar"><button class="btn primary" id="btn-aktif">Uang ternyata masuk, aktifkan pesanan</button></div>' : '') + '<p class="err-msg" id="d-err" role="alert"></p>');
   const nx = $('#btn-next');
   if (nx) nx.addEventListener('click', async () => {
     nx.disabled = true;
@@ -1242,12 +1276,13 @@ function stopGps(quiet) {
 
 /* ---- pengaturan ---- */
 let setBuilt = false;
+let qrisDraft, adminQris; // QRIS: undefined = tidak diubah, '' = hapus, teks data: = gambar baru
 let logoDraft; // undefined = tidak diubah, '' = hapus, teks data: = logo baru
 function flat(c) {
   const f = { nama: c.nama, kurirNama: c.kurirNama, kurirWa: c.kurirWa, pusat_lat: c.pusat.lat, pusat_lng: c.pusat.lng, pusat_zoom: c.pusat.zoom, peta_gaya: c.pusat.gaya,
     dasar: c.tarif.dasar, kmTermasuk: c.tarif.kmTermasuk, perKm: c.tarif.perKm, minimum: c.tarif.minimum, pembulatan: c.tarif.pembulatan, maksJarakKm: c.tarif.maksJarakKm, logo_nama: c.logoNama === false ? '0' : '1',
     bayar_tunai: c.bayar && c.bayar.tunai === false ? '0' : '1', bayar_transfer: c.bayar && c.bayar.transfer ? '1' : '0',
-    bank_nama: c.bayar ? c.bayar.bank.nama : '', bank_rek: c.bayar ? c.bayar.bank.rek : '', bank_atas: c.bayar ? c.bayar.bank.atas : '', bayar_catatan: c.bayar ? c.bayar.catatan : '', bayar_batas_menit: c.bayar ? c.bayar.batasMenit : 60, warna: (c.warna || AJ.WARNA).toLowerCase() };
+    bank_nama: c.bayar ? c.bayar.bank.nama : '', bank_rek: c.bayar ? c.bayar.bank.rek : '', bank_atas: c.bayar ? c.bayar.bank.atas : '', bayar_catatan: c.bayar ? c.bayar.catatan : '', bayar_qris: c.bayar && c.bayar.qris ? '1' : '0', qris_nama: c.bayar ? (c.bayar.qrisNama || '') : '', bayar_batas_menit: c.bayar ? c.bayar.batasMenit : 60, warna: (c.warna || AJ.WARNA).toLowerCase() };
   const oj = c.tarif.ojek || {};
   f.layanan_barang = c.layanan && c.layanan.barang === false ? '0' : '1'; f.layanan_ojek = c.layanan && c.layanan.ojek ? '1' : '0';
   f.ojek_dasar = oj.dasar; f.ojek_kmTermasuk = oj.kmTermasuk; f.ojek_perKm = oj.perKm; f.ojek_minimum = oj.minimum;
@@ -1266,6 +1301,7 @@ function buildSettings() {
       new FormData(form).forEach((v, k) => { if (k !== 'pinBaru') settings[k] = v; });
       settings.bayar_tunai = $('#s-bayar_tunai').checked ? '1' : '0';
       settings.bayar_transfer = $('#s-bayar_transfer').checked ? '1' : '0';
+      settings.bayar_qris = $('#s-bayar_qris').checked ? '1' : '0';
       settings.layanan_barang = $('#s-layanan_barang').checked ? '1' : '0';
       settings.layanan_ojek = $('#s-layanan_ojek').checked ? '1' : '0';
       const btn = $('#set-save'); btn.disabled = true;
@@ -1273,6 +1309,7 @@ function buildSettings() {
         const pb = $('#s-pin').value;
         const payload = { settings, pinBaru: pb };
         if (logoDraft !== undefined) payload.logo = logoDraft;
+        if (qrisDraft !== undefined) payload.qris = qrisDraft;
         cfg = await kcall('kSave', payload);
         if (pb) { pin = pb; AJ.store.set('aj_pin', pb); $('#pin-warn').hidden = true; }
         $('#s-pin').value = '';
@@ -1295,6 +1332,15 @@ function buildSettings() {
       catch (ex) { er.textContent = ex.message; }
     });
     $('#s-logo-del').addEventListener('click', () => { logoDraft = ''; renderLogoPrev(); });
+    $('#s-qris-pick').addEventListener('click', () => $('#s-qris-file').click());
+    $('#s-qris-file').addEventListener('change', async (e) => {
+      const f = e.target.files && e.target.files[0]; e.target.value = '';
+      if (!f) return;
+      const er = $('#set-err'); er.textContent = '';
+      try { qrisDraft = await AJ.logoFromFile(f, { maxW: 720, maxH: 720, limit: 88000, opaque: true, scales: [1, 0.9, 0.8, 0.7] }); renderQrisPrev(); }
+      catch (ex) { er.textContent = ex.message; }
+    });
+    $('#s-qris-del').addEventListener('click', () => { qrisDraft = ''; renderQrisPrev(); });
     $('#s-here').addEventListener('click', () => {
       if (!navigator.geolocation) return AJ.toast('Perangkat ini tidak mendukung GPS.');
       navigator.geolocation.getCurrentPosition((p) => {
@@ -1312,12 +1358,29 @@ function fillSettings() {
     if (el.type === 'checkbox') el.checked = v === '1'; else el.value = v;
   }
   logoDraft = undefined; renderLogoPrev();
+  qrisDraft = undefined; adminQris = undefined; AJ.qrisP = null; renderQrisPrev();
   AJ.applyTheme(cfg.warna); syncWarna();
 }
 function syncWarna() {
   const v = ($('#s-warna').value || AJ.WARNA).toUpperCase();
   $('#warna-hex').textContent = v;
   document.querySelectorAll('#swatches .sw').forEach((b) => b.classList.toggle('on', b.dataset.c === v));
+}
+async function renderQrisPrev() {
+  const img = $('#qris-prev');
+  let cur = qrisDraft;
+  if (cur === undefined) {
+    if (adminQris === undefined) {
+      adminQris = '';
+      if (cfg.bayar && cfg.bayar.qrisAda) { try { const d = await kcall('kQris'); adminQris = (d && d.gambar) || ''; } catch (_e) { adminQris = ''; } }
+    }
+    cur = adminQris;
+  }
+  if (cur) { img.src = cur; img.hidden = false; $('#qris-empty').hidden = true; }
+  else { img.removeAttribute('src'); img.hidden = true; $('#qris-empty').hidden = false; }
+  $('#s-qris-del').hidden = !cur;
+  $('#qris-note').textContent = qrisDraft === undefined ? '' :
+    (qrisDraft ? 'Gambar QRIS baru dipilih. Tekan Simpan pengaturan untuk menerapkannya.' : 'Gambar QRIS akan dihapus setelah Anda menekan Simpan pengaturan.');
 }
 function renderLogoPrev() {
   const cur = logoDraft === undefined ? (cfg.logo || '') : logoDraft;
